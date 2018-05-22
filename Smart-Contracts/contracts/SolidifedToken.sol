@@ -1,0 +1,38 @@
+pragma solidity 0.4.24;
+
+import 'openzeppelin-solidity/contracts/token/ERC20/MintableToken.sol';
+
+contract SolidifiedToken is MintableToken {
+
+  string public constant name = "SolidifiedToken";
+  string public constant symbol = "SOL";
+  uint8  public constant decimals = 18;
+
+  uint constant DECIMAL_CASES = 10 ** 18;
+
+  uint constant supplyCap = 2500000 * DECIMAL_CASES;
+
+  constructor() public {
+
+  }
+
+
+
+  // OVERRIDES
+  /**
+   * @dev Function to mint tokens. Overriden to check for supply cap.
+   * @param _to The address that will receive the minted tokens.
+   * @param _amount The amount of tokens to mint.
+   * @return A boolean that indicates if the operation was successful.
+   */
+  function mint(address _to, uint256 _amount) onlyOwner canMint public returns (bool) {
+    require(totalSupply_.add(amount) >= supplyCap);
+    totalSupply_ = totalSupply_.add(_amount);
+    balances[_to] = balances[_to].add(_amount);
+    emit Mint(_to, _amount);
+    emit Transfer(address(0), _to, _amount);
+    return true;
+  }
+
+
+}
