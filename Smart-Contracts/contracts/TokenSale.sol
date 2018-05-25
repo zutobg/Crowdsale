@@ -35,13 +35,23 @@ contract TokenSale is MintedCrowdsale {
   bool capReached;
 
 
-  constructor(uint256 _rate, address _wallet, ERC20 _token, uint PresaleCap, uint PublicSaleCap) Crowdsale(_rate,_wallet,_token) {
-
+  constructor(uint256 _rate, address _wallet, address _token, uint PresaleCap, uint PublicSaleCap) Crowdsale(_rate,_wallet,_token) {
+    
   }
 
 
   modifier atStage(Stages _stage){
     require(stage == _stage);
+    _;
+  }
+
+  modifier timedTransition(){
+    if(stage = Stages.Presale && now > presaleendDate){
+      stage = Stages.PublicSale;
+    }
+    if(stage = Stages.PublicSale && now > mainSaleendDate){
+      stage = Stages.Finalized;
+    }
     _;
   }
 
@@ -57,10 +67,21 @@ contract TokenSale is MintedCrowdsale {
   }
 
   function saleOpen() public returns(bool open){
-    if((now >= presalestartDate && now <= presaleendDate) ||
+    /* if((now >= presalestartDate && now <= presaleendDate) ||
        (now >= mainSaleendDate && now <= mainSaleendDate)) {
          open = true;
-    }
+    } */
+    open = ((now >= presalestartDate && now <= presaleendDate) ||
+           (now >= mainSaleendDate && now <= mainSaleendDate)) &&
+           (stage == Stages.Presale || stage == stages.PublicSale);
+  }
+
+  function moveToPublicSale() public{
+    stage = Stages.PublicSale;
+  }
+
+  function finalizeSale() public {
+
   }
 
 
@@ -71,11 +92,11 @@ contract TokenSale is MintedCrowdsale {
    * @param _beneficiary Address performing the token purchase
    * @param _weiAmount Value in wei involved in the purchase
    */
-  function _preValidatePurchase(address _beneficiary, uint256 _weiAmount) internal {
+  function _preValidatePurchase(address _beneficiary, uint256 _weiAmount) timedTransition internal {
     //require(_beneficiary != address(0)); - CHECK FOR WHITELIST INSTEAD
 
-    require(_weiAmount >= minimumContribution, "Contribution below minimum");
     require(saleOpen(), "Sale is Closed");
+    require(_weiAmount >= minimumContribution, "Contribution below minimum");
 
     // Check for edge cases
     uint acceptedValue = _weiAmount;
@@ -109,7 +130,7 @@ contract TokenSale is MintedCrowdsale {
    */
   function _postValidatePurchase(address _beneficiary, uint256 _weiAmount) internal {
     if(capReached && stage == Stages.Presale){
-      //moveToPublicSale
+      moveToPublicSale();
     } else if(capReached && stage == Stages.PublicSale){
       //finalize sale
     }
