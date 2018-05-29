@@ -1,8 +1,10 @@
-currentStagepragma solidity 0.4.24;
+pragma solidity 0.4.24;
 
 import 'openzeppelin-solidity/contracts/crowdsale/emission/MintedCrowdsale.sol';
+import './SolidifiedToken.sol';
+import 'openzeppelin-solidity/contracts/lifecycle/Pausable.sol';
 
-contract TokenSale is MintedCrowdsale {
+contract TokenSale is MintedCrowdsale, Pausable {
 
   enum Stages{
     SETUP,
@@ -37,9 +39,8 @@ contract TokenSale is MintedCrowdsale {
 
 
   constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 PresaleCap, uint256 PublicSaleCap) Crowdsale(_rate,_wallet,_token) {
-    //DEPLY TOKEN
+    token = new SolidifiedToken();
   }
-
 
   modifier atStage(Stages _currentStage){
     require(currentStage == _currentStage);
@@ -47,13 +48,40 @@ contract TokenSale is MintedCrowdsale {
   }
 
   modifier timedTransition(){
+    if(currentStage == Stages.SETUP && now >= presale_StartDate){
+      currentStage = Stages.PRESALE;
+    }
     if(currentStage == Stages.PRESALE && now > presale_EndDate){
+      currentStage = Stages.BREAK;
+    }
+    if(currentStage == Stages.BREAK && now > presale_EndDate + 10 days){
       currentStage = Stages.PUBLICSALE;
     }
     if(currentStage == Stages.PUBLICSALE && now > publicSale_EndDate){
       currentStage = Stages.FINALAIZED;
     }
     _;
+  }
+
+  function updateStage() timedTransition {
+    //nothing to do here
+  }
+
+  function setupSale(uint256 initialDate) onlyOwner atStage(Stages.SETUP) public {
+    presaleCap = 1;
+    publicSaleCap = 2;
+    setDates(initialDate);
+  }
+
+  /**
+   * @dev Sets tha dates and durations of the different sale stages
+   * @param _presaleSartDate A timestamp representing the start of the presale
+   */
+  function setDates(uint256 _presaleSartDate) onlyOwner atStage(Stages.SETUP) public {
+    presale_StartDate = _presaleSartDate;
+    presale_EndDate = presale_StartDate + 90 days;
+    publicSale_StartDate = presale_EndDate + 10 days;
+    publicSale_EndDate = publicSale_StartDate + 30 days;
   }
 
   /**
@@ -77,15 +105,25 @@ contract TokenSale is MintedCrowdsale {
            (currentStage == Stages.PRESALE || currentStage == Stages.PUBLICSALE);
   }
 
+  function distributeTokens(address[] beneficiaries, uint256[] amounts) public onlyOwner atStage(Stages.FINALAIZED) {
+    for(uint i = 0; i < beneficiaries.length; i++){
+      _deliverTokens(beneficiaries[i], amounts[i]);
+    }
+  }
+
+/*
   function moveToPublicSale() atStage(Stages.BREAK) public{
     currentStage = Stages.PUBLICSALE;
-  }
+  } */
 
   function finalizeSale() public {
     // Mint tokens to founders and partnes
+    //distributeTokens();
     // Enable token transfer
     // Finish token minting
+    require(MintableToken(token).finishMinting());
     // Token ownership?
+    //require(MintableToken(token).transferOwnership(owner));
   }
 
 
@@ -100,7 +138,7 @@ contract TokenSale is MintedCrowdsale {
     //require(_beneficiary != address(0)); - CHECK FOR WHITELIST INSTEAD
 
     require(saleOpen(), "Sale is Closed");
-    require(_weiAmount >= minimumContribution, "Contribution below minimum");
+    //require(_weiAmount >= minimumContribution, "Contribution below minimum");
 
     // Check for edge cases
     uint256 acceptedValue = _weiAmount;
@@ -111,8 +149,10 @@ contract TokenSale is MintedCrowdsale {
     uint256 currentCap = getCurrentCap();
     if(weiRaised.add(acceptedValue) > currentCap){
       changeDue = changeDue.add(weiRaised.add(acceptedValue).sub(currentCap));
+      acceptedValue = _weiAmount.sub(changeDue);
       capReached = true;
     }
+    require(acceptedValue >= minimumContribution, "Contribution below minimum");
   }
 
   /**
@@ -135,7 +175,7 @@ contract TokenSale is MintedCrowdsale {
   function _postValidatePurchase(address _beneficiary, uint256 _weiAmount) internal {
     if(capReached && currentStage == Stages.PRESALE){
       //moveToPublicSale(); //MoveToBreak
-    } else if(capReached && stage == Stages.PUBLICSALE){
+    } else if(capReached && currentStage == Stages.PUBLICSALE){
       finalizeSale();
     }
     //Triggers for reaching cap
