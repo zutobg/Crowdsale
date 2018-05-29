@@ -1,83 +1,84 @@
-pragma solidity 0.4.24;
+currentStagepragma solidity 0.4.24;
 
 import 'openzeppelin-solidity/contracts/crowdsale/emission/MintedCrowdsale.sol';
 
 contract TokenSale is MintedCrowdsale {
 
   enum Stages{
-    Setup,
-    Presale,
-    PublicSale,
-    Finalized
+    SETUP,
+    PRESALE,
+    BREAK,
+    PUBLICSALE,
+    FINALAIZED
   }
 
   //Global Variables
   mapping(address => uint) contributions;
-  Stages public stage;
-  uint public minimumContribution;
-  uint public maximumContribution;
+  Stages public currentStage;
+  uint256 public minimumContribution;
+  uint256 public maximumContribution;
 
   //PRESALE VARIABLES
-  uint presalestartDate;
-  uint presaleendDate;
-  uint presaleCap;
-  uint presaletokesSold;
+  uint256 presale_StartDate;
+  uint256 presale_EndDate;
+  uint256 presaleCap;
+  uint256 presale_TokesSold;
 
   //PUBLICSALE VARIABLES
-  uint mainSalestartDate;
-  uint mainSaleendDate;
-  uint publicSaleCap;
-  uint maintokesSold;
+  uint256 publicSale_StartDate;
+  uint256 publicSale_EndDate;
+  uint256 publicSaleCap;
+  uint256 publicSale_TokesSold;
 
 
   //TEMP VARIABLE - USED TO NOT OVERRIDE MORE OZ FUNCTIONS
-  uint changeDue;
+  uint256 changeDue;
   bool capReached;
 
 
-  constructor(uint256 _rate, address _wallet, ERC20 _token, uint PresaleCap, uint PublicSaleCap) Crowdsale(_rate,_wallet,_token) {
-
+  constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 PresaleCap, uint256 PublicSaleCap) Crowdsale(_rate,_wallet,_token) {
+    //DEPLY TOKEN
   }
 
 
-  modifier atStage(Stages _stage){
-    require(stage == _stage);
+  modifier atStage(Stages _currentStage){
+    require(currentStage == _currentStage);
     _;
   }
 
   modifier timedTransition(){
-    if(stage == Stages.Presale && now > presaleendDate){
-      stage = Stages.PublicSale;
+    if(currentStage == Stages.PRESALE && now > presale_EndDate){
+      currentStage = Stages.PUBLICSALE;
     }
-    if(stage == Stages.PublicSale && now > mainSaleendDate){
-      stage = Stages.Finalized;
+    if(currentStage == Stages.PUBLICSALE && now > publicSale_EndDate){
+      currentStage = Stages.FINALAIZED;
     }
     _;
   }
 
   /**
-   * @dev Returns de ETH cap of the current stage
-   * @returns uint representing the cap
+   * @dev Returns de ETH cap of the current currentStage
+   * @return uint256 representing the cap
    */
   function getCurrentCap() public returns(uint256 cap){
     cap = presaleCap;
-    if(stage == Stages.PublicSale){
+    if(currentStage == Stages.PUBLICSALE){
       cap = publicSaleCap;
     }
   }
 
   function saleOpen() public returns(bool open){
-    /* if((now >= presalestartDate && now <= presaleendDate) ||
-       (now >= mainSaleendDate && now <= mainSaleendDate)) {
+    /* if((now >= presale_StartDate && now <= presale_EndDate) ||
+       (now >= publicSale_EndDate && now <= publicSale_EndDate)) {
          open = true;
     } */
-    open = ((now >= presalestartDate && now <= presaleendDate) ||
-           (now >= mainSaleendDate && now <= mainSaleendDate)) &&
-           (stage == Stages.Presale || stage == Stages.PublicSale);
+    open = ((now >= presale_StartDate && now <= presale_EndDate) ||
+           (now >= publicSale_EndDate && now <= publicSale_EndDate)) &&
+           (currentStage == Stages.PRESALE || currentStage == Stages.PUBLICSALE);
   }
 
-  function moveToPublicSale() public{
-    stage = Stages.PublicSale;
+  function moveToPublicSale() atStage(Stages.BREAK) public{
+    currentStage = Stages.PUBLICSALE;
   }
 
   function finalizeSale() public {
@@ -102,7 +103,7 @@ contract TokenSale is MintedCrowdsale {
     require(_weiAmount >= minimumContribution, "Contribution below minimum");
 
     // Check for edge cases
-    uint acceptedValue = _weiAmount;
+    uint256 acceptedValue = _weiAmount;
     if(contributions[msg.sender].add(acceptedValue) > maximumContribution){
       changeDue = contributions[msg.sender].add(acceptedValue).sub(maximumContribution);
       acceptedValue = acceptedValue.sub(changeDue);
@@ -121,7 +122,7 @@ contract TokenSale is MintedCrowdsale {
    */
   function _getTokenAmount(uint256 _weiAmount) internal view returns (uint256 amount) {
     amount = (_weiAmount.sub(changeDue)).mul(rate);
-    if(stage == Stages.Presale){
+    if(currentStage == Stages.PRESALE){
       amount = amount.add(amount.mul(20).div(100));
     }
   }
@@ -132,16 +133,17 @@ contract TokenSale is MintedCrowdsale {
    * @param _weiAmount Value in wei involved in the purchase
    */
   function _postValidatePurchase(address _beneficiary, uint256 _weiAmount) internal {
-    if(capReached && stage == Stages.Presale){
-      moveToPublicSale();
-    } else if(capReached && stage == Stages.PublicSale){
+    if(capReached && currentStage == Stages.PRESALE){
+      //moveToPublicSale(); //MoveToBreak
+    } else if(capReached && stage == Stages.PUBLICSALE){
       finalizeSale();
     }
     //Triggers for reaching cap
     weiRaised = weiRaised.sub(changeDue);
-    _beneficiary.transfer(changeDue);
-    changeDue = 0; //TODO check for reentrancy
+    uint256 change = changeDue;
+    changeDue = 0;
     capReached = false;
+    _beneficiary.transfer(change);
   }
 
   /**
