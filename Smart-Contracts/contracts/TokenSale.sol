@@ -35,8 +35,8 @@ contract TokenSale is MintedCrowdsale {
   bool capReached;
 
 
-  constructor(uint256 _rate, address _wallet, address _token, uint PresaleCap, uint PublicSaleCap) Crowdsale(_rate,_wallet,_token) {
-    
+  constructor(uint256 _rate, address _wallet, ERC20 _token, uint PresaleCap, uint PublicSaleCap) Crowdsale(_rate,_wallet,_token) {
+
   }
 
 
@@ -46,10 +46,10 @@ contract TokenSale is MintedCrowdsale {
   }
 
   modifier timedTransition(){
-    if(stage = Stages.Presale && now > presaleendDate){
+    if(stage == Stages.Presale && now > presaleendDate){
       stage = Stages.PublicSale;
     }
-    if(stage = Stages.PublicSale && now > mainSaleendDate){
+    if(stage == Stages.PublicSale && now > mainSaleendDate){
       stage = Stages.Finalized;
     }
     _;
@@ -73,7 +73,7 @@ contract TokenSale is MintedCrowdsale {
     } */
     open = ((now >= presalestartDate && now <= presaleendDate) ||
            (now >= mainSaleendDate && now <= mainSaleendDate)) &&
-           (stage == Stages.Presale || stage == stages.PublicSale);
+           (stage == Stages.Presale || stage == Stages.PublicSale);
   }
 
   function moveToPublicSale() public{
@@ -81,7 +81,10 @@ contract TokenSale is MintedCrowdsale {
   }
 
   function finalizeSale() public {
-
+    // Mint tokens to founders and partnes
+    // Enable token transfer
+    // Finish token minting
+    // Token ownership?
   }
 
 
@@ -132,7 +135,7 @@ contract TokenSale is MintedCrowdsale {
     if(capReached && stage == Stages.Presale){
       moveToPublicSale();
     } else if(capReached && stage == Stages.PublicSale){
-      //finalize sale
+      finalizeSale();
     }
     //Triggers for reaching cap
     weiRaised = weiRaised.sub(changeDue);
