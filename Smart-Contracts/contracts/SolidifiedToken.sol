@@ -12,6 +12,9 @@ contract SolidifiedToken is MintableToken {
 
   uint constant supplyCap = 2500000 * DECIMAL_CASES;
 
+  bool public transfersEnabled = false;
+
+
   constructor() public {
 
   }
@@ -31,6 +34,30 @@ contract SolidifiedToken is MintableToken {
     balances[_to] = balances[_to].add(_amount);
     emit Mint(_to, _amount);
     emit Transfer(address(0), _to, _amount);
+    return true;
+  }
+
+  /**
+  * @dev transfer token for a specified address
+  * @param _to The address to transfer to.
+  * @param _value The amount to be transferred.
+  */
+  function transfer(address _to, uint256 _value) public returns (bool) {
+    require(transfersEnabled, "Tranfers are disabled");
+    require(super.transfer(_to, _value));
+    return true;
+  }
+
+
+  /**
+   * @dev Transfer tokens from one address to another
+   * @param _from address The address which you want to send tokens from
+   * @param _to address The address which you want to transfer to
+   * @param _value uint256 the amount of tokens to be transferred
+   */
+  function transferFrom(address _from, address _to, uint256 _value) public returns (bool) {
+    require(transfersEnabled, "Tranfers are disabled");
+    require(super.transferFrom(_from, _to, _value));
     return true;
   }
 

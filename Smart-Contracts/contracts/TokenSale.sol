@@ -21,16 +21,16 @@ contract TokenSale is MintedCrowdsale, Pausable {
   uint256 public maximumContribution;
 
   //PRESALE VARIABLES
-  uint256 presale_StartDate;
-  uint256 presale_EndDate;
-  uint256 presaleCap;
-  uint256 presale_TokesSold;
+  uint256 public presale_StartDate;
+  uint256 public presale_EndDate;
+  uint256 public presaleCap;
+  uint256 public presale_TokesSold;
 
   //PUBLICSALE VARIABLES
-  uint256 publicSale_StartDate;
-  uint256 publicSale_EndDate;
-  uint256 publicSaleCap;
-  uint256 publicSale_TokesSold;
+  uint256 public publicSale_StartDate;
+  uint256 public publicSale_EndDate;
+  uint256 public publicSaleCap;
+  uint256 public publicSale_TokesSold;
 
 
   //TEMP VARIABLE - USED TO NOT OVERRIDE MORE OZ FUNCTIONS
@@ -39,7 +39,7 @@ contract TokenSale is MintedCrowdsale, Pausable {
 
 
   constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 PresaleCap, uint256 PublicSaleCap) Crowdsale(_rate,_wallet,_token) {
-    token = new SolidifiedToken();
+
   }
 
   modifier atStage(Stages _currentStage){
@@ -64,12 +64,18 @@ contract TokenSale is MintedCrowdsale, Pausable {
   }
 
   function updateStage() timedTransition {
-    //nothing to do here
+    //Satge Conversions not covered by times Transitions
+    if(currentStage == Stages.PRESALE){
+      require(presaleCap.sub(presale_TokesSold) < minimumContribution);
+      currentStage = Stages.BREAK;
+    }
   }
 
   function setupSale(uint256 initialDate) onlyOwner atStage(Stages.SETUP) public {
-    presaleCap = 1;
-    publicSaleCap = 2;
+    presaleCap = 1000000 ether;
+    publicSaleCap = 500000 ether;
+    minimumContribution = 0.5 ether;
+    maximumContribution = 100 ether;
     setDates(initialDate);
   }
 
@@ -82,6 +88,11 @@ contract TokenSale is MintedCrowdsale, Pausable {
     presale_EndDate = presale_StartDate + 90 days;
     publicSale_StartDate = presale_EndDate + 10 days;
     publicSale_EndDate = publicSale_StartDate + 30 days;
+  }
+
+  function setUpToken(address _token) onlyOwner atStage(Stages.SETUP) public {
+    //token = ERC20(_token);
+    require(SolidifiedToken(_token).owner() == address(this), "Issue with token setup");
   }
 
   /**
