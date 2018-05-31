@@ -1,13 +1,15 @@
 pragma solidity 0.4.24;
 
 import 'openzeppelin-solidity/contracts/crowdsale/emission/MintedCrowdsale.sol';
+import 'openzeppelin-solidity/contracts/crowdsale/validation/WhitelistedCrowdsale.sol';
 import './SolidifiedToken.sol';
 import 'openzeppelin-solidity/contracts/lifecycle/Pausable.sol';
 
-contract TokenSale is MintedCrowdsale, Pausable {
+contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
 
   enum Stages{
     SETUP,
+    READY,
     PRESALE,
     BREAK,
     PUBLICSALE,
@@ -38,8 +40,11 @@ contract TokenSale is MintedCrowdsale, Pausable {
   bool capReached;
 
 
-  constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 PresaleCap, uint256 PublicSaleCap) Crowdsale(_rate,_wallet,_token) {
-
+  constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 PresaleCap, uint256 PublicSaleCap) public Crowdsale(_rate,_wallet,_token) {
+    presaleCap = 1000000 ether;
+    publicSaleCap = 500000 ether;
+    minimumContribution = 0.5 ether;
+    maximumContribution = 100 ether;
   }
 
   modifier atStage(Stages _currentStage){
@@ -48,17 +53,17 @@ contract TokenSale is MintedCrowdsale, Pausable {
   }
 
   modifier timedTransition(){
-    if(currentStage == Stages.SETUP && now >= presale_StartDate){
+    if(currentStage == Stages.READY && now >= presale_StartDate){
       currentStage = Stages.PRESALE;
     }
     if(currentStage == Stages.PRESALE && now > presale_EndDate){
-      currentStage = Stages.BREAK;
+      finalizePresale();
     }
     if(currentStage == Stages.BREAK && now > presale_EndDate + 10 days){
       currentStage = Stages.PUBLICSALE;
     }
     if(currentStage == Stages.PUBLICSALE && now > publicSale_EndDate){
-      currentStage = Stages.FINALAIZED;
+      //currentStage = Stages.FINALAIZED;
     }
     _;
   }
@@ -67,32 +72,32 @@ contract TokenSale is MintedCrowdsale, Pausable {
     //Satge Conversions not covered by times Transitions
     if(currentStage == Stages.PRESALE){
       require(presaleCap.sub(presale_TokesSold) < minimumContribution);
-      currentStage = Stages.BREAK;
+      finalizePresale();
+    }
+    if(currentStage == Stages.PUBLICSALE){
+      require(publicSaleCap.sub(publicSale_TokesSold) < minimumContribution);
+      currentStage = Stages.FINALAIZED;
     }
   }
 
-  function setupSale(uint256 initialDate) onlyOwner atStage(Stages.SETUP) public {
-    presaleCap = 1000000 ether;
-    publicSaleCap = 500000 ether;
-    minimumContribution = 0.5 ether;
-    maximumContribution = 100 ether;
+  function setupSale(uint256 initialDate, address tokenAddress) onlyOwner atStage(Stages.SETUP) public {
+    setUpToken(tokenAddress);
     setDates(initialDate);
+    currentStage = Stages.READY;
   }
 
   /**
    * @dev Sets tha dates and durations of the different sale stages
    * @param _presaleSartDate A timestamp representing the start of the presale
    */
-  function setDates(uint256 _presaleSartDate) onlyOwner atStage(Stages.SETUP) public {
+  function setDates(uint256 _presaleSartDate) onlyOwner atStage(Stages.SETUP) internal {
     presale_StartDate = _presaleSartDate;
     presale_EndDate = presale_StartDate + 90 days;
-    publicSale_StartDate = presale_EndDate + 10 days;
-    publicSale_EndDate = publicSale_StartDate + 30 days;
   }
 
-  function setUpToken(address _token) onlyOwner atStage(Stages.SETUP) public {
-    //token = ERC20(_token);
-    require(SolidifiedToken(_token).owner() == address(this), "Issue with token setup");
+  function setUpToken(address _token) onlyOwner atStage(Stages.SETUP) internal {
+    token = ERC20(_token);
+    assert(SolidifiedToken(_token).owner() == address(this), "Issue with token setup");
   }
 
   /**
@@ -106,7 +111,7 @@ contract TokenSale is MintedCrowdsale, Pausable {
     }
   }
 
-  function saleOpen() public returns(bool open){
+  function saleOpen() public returns(bool open) {
     /* if((now >= presale_StartDate && now <= presale_EndDate) ||
        (now >= publicSale_EndDate && now <= publicSale_EndDate)) {
          open = true;
@@ -122,10 +127,12 @@ contract TokenSale is MintedCrowdsale, Pausable {
     }
   }
 
-/*
-  function moveToPublicSale() atStage(Stages.BREAK) public{
-    currentStage = Stages.PUBLICSALE;
-  } */
+  function finalizePresale() atStage(Stages.PRESALE) public{
+    presale_EndDate = now;
+    publicSale_StartDate = presale_EndDate + 10 days;
+    publicSale_EndDate = publicSale_StartDate + 30 days;
+    currentStage = Stages.BREAK;
+  }
 
   function finalizeSale() public {
     // Mint tokens to founders and partnes
@@ -145,9 +152,7 @@ contract TokenSale is MintedCrowdsale, Pausable {
    * @param _beneficiary Address performing the token purchase
    * @param _weiAmount Value in wei involved in the purchase
    */
-  function _preValidatePurchase(address _beneficiary, uint256 _weiAmount) timedTransition internal {
-    //require(_beneficiary != address(0)); - CHECK FOR WHITELIST INSTEAD
-
+  function _preValidatePurchase(address _beneficiary, uint256 _weiAmount) timedTransition isWhitelisted(_beneficiary) internal {
     require(saleOpen(), "Sale is Closed");
     //require(_weiAmount >= minimumContribution, "Contribution below minimum");
 
@@ -184,11 +189,18 @@ contract TokenSale is MintedCrowdsale, Pausable {
    * @param _weiAmount Value in wei involved in the purchase
    */
   function _postValidatePurchase(address _beneficiary, uint256 _weiAmount) internal {
-    if(capReached && currentStage == Stages.PRESALE){
-      //moveToPublicSale(); //MoveToBreak
-    } else if(capReached && currentStage == Stages.PUBLICSALE){
-      finalizeSale();
+    uint256 tokenAmount = _getTokenAmount(_weiAmount);
+
+    if(currentStage == Stages.PRESALE){
+      presale_TokesSold = presale_TokesSold.add(tokenAmount)
+      if(capReached)
+        finalizePresale()
+    } else{
+      publicSale_TokesSold = publicSale_TokesSold.add(tokenAmount)
+      if(capReached)
+        finalizeSale();
     }
+
     //Triggers for reaching cap
     weiRaised = weiRaised.sub(changeDue);
     uint256 change = changeDue;
