@@ -5,18 +5,27 @@ import 'openzeppelin-solidity/contracts/token/ERC20/MintableToken.sol';
 contract SolidifiedToken is MintableToken {
 
   string public constant name = "SolidifiedToken";
-  string public constant symbol = "SOL";
+  string public constant symbol = "SLD";
   uint8  public constant decimals = 18;
 
   uint constant DECIMAL_CASES = 10 ** 18;
 
-  uint constant supplyCap = 2500000 * DECIMAL_CASES;
+  uint constant supplyCap = 4000000 * DECIMAL_CASES;
 
   bool public transfersEnabled = false;
+  uint256 public transferEnablingDate;
 
+  /* constructor() public {
 
-  constructor() public {
+  } */
 
+  function setTransferEnablingDate(uint256 date) public onlyOwner {
+    transferEnablingDate = date;
+  }
+
+  function enableTransfer() public {
+    require(now > transferEnablingDate);
+    transfersEnabled = true;
   }
 
 
@@ -29,7 +38,7 @@ contract SolidifiedToken is MintableToken {
    * @return A boolean that indicates if the operation was successful.
    */
   function mint(address _to, uint256 _amount) onlyOwner canMint public returns (bool) {
-    require(totalSupply_.add(_amount) >= supplyCap);
+    require(totalSupply_.add(_amount) <= supplyCap);
     totalSupply_ = totalSupply_.add(_amount);
     balances[_to] = balances[_to].add(_amount);
     emit Mint(_to, _amount);

@@ -25,13 +25,15 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
   //PRESALE VARIABLES
   uint256 public presale_StartDate;
   uint256 public presale_EndDate;
-  uint256 public presaleCap;
+  uint256 public presale_Cap;
+  uint256 public presale_TokenCap;
   uint256 public presale_TokesSold;
 
   //PUBLICSALE VARIABLES
   uint256 public publicSale_StartDate;
   uint256 public publicSale_EndDate;
-  uint256 public publicSaleCap;
+  uint256 public publicSale_Cap;
+  uint256 public publicSale_TokenCap;
   uint256 public publicSale_TokesSold;
 
 
@@ -40,9 +42,11 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
   bool capReached;
 
 
-  constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 PresaleCap, uint256 PublicSaleCap) public Crowdsale(_rate,_wallet,_token) {
-    presaleCap = 1000000 ether;
-    publicSaleCap = 500000 ether;
+  constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 presaleTokenCap, uint256 publicSaleTokenCap) public Crowdsale(_rate,_wallet,_token) {
+    presale_TokenCap = presaleTokenCap;
+    publicSale_TokenCap = publicSaleTokenCap;
+    presale_Cap = 19200 ether;
+    publicSale_Cap = 12000 ether;
     minimumContribution = 0.5 ether;
     maximumContribution = 100 ether;
   }
@@ -63,7 +67,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
       currentStage = Stages.PUBLICSALE;
     }
     if(currentStage == Stages.PUBLICSALE && now > publicSale_EndDate){
-      //currentStage = Stages.FINALAIZED;
+      finalizeSale();
     }
     _;
   }
@@ -71,11 +75,11 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
   function updateStage() timedTransition {
     //Satge Conversions not covered by times Transitions
     if(currentStage == Stages.PRESALE){
-      require(presaleCap.sub(presale_TokesSold) < minimumContribution);
+      require(presale_Cap.sub(presale_TokesSold) < minimumContribution);
       finalizePresale();
     }
     if(currentStage == Stages.PUBLICSALE){
-      require(publicSaleCap.sub(publicSale_TokesSold) < minimumContribution);
+      require(publicSale_Cap.sub(publicSale_TokesSold) < minimumContribution);
       currentStage = Stages.FINALAIZED;
     }
   }
@@ -97,7 +101,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
 
   function setUpToken(address _token) onlyOwner atStage(Stages.SETUP) internal {
     token = ERC20(_token);
-    assert(SolidifiedToken(_token).owner() == address(this), "Issue with token setup");
+    require(SolidifiedToken(_token).owner() == address(this), "Issue with token setup");
   }
 
   /**
@@ -105,13 +109,13 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
    * @return uint256 representing the cap
    */
   function getCurrentCap() public returns(uint256 cap){
-    cap = presaleCap;
+    cap = presale_Cap;
     if(currentStage == Stages.PUBLICSALE){
-      cap = publicSaleCap;
+      cap = publicSale_Cap;
     }
   }
 
-  function saleOpen() public returns(bool open) {
+  function saleOpen() public timedTransition returns(bool open) {
     /* if((now >= presale_StartDate && now <= presale_EndDate) ||
        (now >= publicSale_EndDate && now <= publicSale_EndDate)) {
          open = true;
@@ -119,18 +123,22 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
     open = ((now >= presale_StartDate && now <= presale_EndDate) ||
            (now >= publicSale_EndDate && now <= publicSale_EndDate)) &&
            (currentStage == Stages.PRESALE || currentStage == Stages.PUBLICSALE);
+
+    return open;
   }
 
-  function distributeTokens(address[] beneficiaries, uint256[] amounts) public onlyOwner atStage(Stages.FINALAIZED) {
+  /* function distributeTokens(address[] beneficiaries, uint256[] amounts) public onlyOwner atStage(Stages.FINALAIZED) {
     for(uint i = 0; i < beneficiaries.length; i++){
       _deliverTokens(beneficiaries[i], amounts[i]);
     }
-  }
+  } */
 
   function finalizePresale() atStage(Stages.PRESALE) public{
     presale_EndDate = now;
     publicSale_StartDate = presale_EndDate + 10 days;
     publicSale_EndDate = publicSale_StartDate + 30 days;
+    publicSale_TokenCap = publicSale_TokenCap.add(presale_TokenCap.sub(presale_TokesSold));
+    publicSale_Cap = publicSale_Cap.add(presale_Cap.sub(weiRaised).sub(changeDue));
     currentStage = Stages.BREAK;
   }
 
@@ -139,9 +147,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
     //distributeTokens();
     // Enable token transfer
     // Finish token minting
-    require(MintableToken(token).finishMinting());
-    // Token ownership?
-    //require(MintableToken(token).transferOwnership(owner));
+    //require(MintableToken(token).finishMinting());
+    // Set token timelock
   }
 
 
@@ -177,9 +184,9 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
    * @return Number of tokens that can be purchased with the specified _weiAmount
    */
   function _getTokenAmount(uint256 _weiAmount) internal view returns (uint256 amount) {
-    amount = (_weiAmount.sub(changeDue)).mul(rate);
+    amount = (_weiAmount.sub(changeDue)).mul(1000).div(rate); // Multiplication to account for the decimal cases in the rate
     if(currentStage == Stages.PRESALE){
-      amount = amount.add(amount.mul(20).div(100));
+      amount = amount.add(amount.mul(25).div(100)); //Add bonus 
     }
   }
 
@@ -192,11 +199,11 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
     uint256 tokenAmount = _getTokenAmount(_weiAmount);
 
     if(currentStage == Stages.PRESALE){
-      presale_TokesSold = presale_TokesSold.add(tokenAmount)
+      presale_TokesSold = presale_TokesSold.add(tokenAmount);
       if(capReached)
-        finalizePresale()
+        finalizePresale();
     } else{
-      publicSale_TokesSold = publicSale_TokesSold.add(tokenAmount)
+      publicSale_TokesSold = publicSale_TokesSold.add(tokenAmount);
       if(capReached)
         finalizeSale();
     }
@@ -220,3 +227,5 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
 
 
 }
+
+// 15, "0xca35b7d915458ef540ade6068dfe2f44e8fa733c", "0xbbf289d846208c16edc8474705c748aff07732db", "19200000000000000000000", "120000000000000000000"
