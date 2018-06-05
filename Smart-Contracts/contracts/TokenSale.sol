@@ -17,7 +17,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
   }
 
   //Global Variables
-  mapping(address => uint) contributions;
+  mapping(address => uint) public contributions;
   Stages public currentStage;
   uint256 public minimumContribution;
   uint256 public maximumContribution;
@@ -28,6 +28,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
   uint256 public presale_Cap;
   uint256 public presale_TokenCap;
   uint256 public presale_TokesSold;
+  uint256 public presale_WeiRaised;
 
   //PUBLICSALE VARIABLES
   uint256 public publicSale_StartDate;
@@ -35,6 +36,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
   uint256 public publicSale_Cap;
   uint256 public publicSale_TokenCap;
   uint256 public publicSale_TokesSold;
+  uint256 public publicSale_WeiRaised;
 
 
   //TEMP VARIABLE - USED TO NOT OVERRIDE MORE OZ FUNCTIONS
@@ -42,11 +44,11 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
   bool capReached;
 
 
-  constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 presaleTokenCap, uint256 publicSaleTokenCap) public Crowdsale(_rate,_wallet,_token) {
-    presale_TokenCap = presaleTokenCap;
-    publicSale_TokenCap = publicSaleTokenCap;
-    presale_Cap = 19200 ether;
-    publicSale_Cap = 12000 ether;
+  constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 presaleCap, uint256 publicCap) public Crowdsale(_rate,_wallet,_token) {
+    presale_TokenCap = 1600000 ether;
+    publicSale_TokenCap = 800000 ether;
+    presale_Cap = presaleCap;
+    publicSale_Cap = publicCap;
     minimumContribution = 0.5 ether;
     maximumContribution = 100 ether;
   }
@@ -75,12 +77,12 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
   function updateStage() timedTransition {
     //Satge Conversions not covered by times Transitions
     if(currentStage == Stages.PRESALE){
-      require(presale_Cap.sub(presale_TokesSold) < minimumContribution);
-      finalizePresale();
+      if(presale_Cap.sub(weiRaised) < minimumContribution)
+        finalizePresale();
     }
     if(currentStage == Stages.PUBLICSALE){
-      require(publicSale_Cap.sub(publicSale_TokesSold) < minimumContribution);
-      currentStage = Stages.FINALAIZED;
+      if((publicSale_Cap.add(presale_Cap)).sub(weiRaised) < minimumContribution)
+        currentStage = Stages.FINALAIZED;
     }
   }
 
@@ -115,16 +117,20 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
     }
   }
 
-  function saleOpen() public timedTransition returns(bool open) {
-    /* if((now >= presale_StartDate && now <= presale_EndDate) ||
-       (now >= publicSale_EndDate && now <= publicSale_EndDate)) {
-         open = true;
-    } */
-    open = ((now >= presale_StartDate && now <= presale_EndDate) ||
-           (now >= publicSale_EndDate && now <= publicSale_EndDate)) &&
-           (currentStage == Stages.PRESALE || currentStage == Stages.PUBLICSALE);
+  /**
+   * @dev Returns de ETH cap of the current currentStage
+   * @return uint256 representing the cap
+   */
+  function getRaisedForCurrentStage() public returns(uint256 raised){
+    raised = presale_WeiRaised;
+    if(currentStage == Stages.PUBLICSALE)
+      raised = publicSale_WeiRaised;
+  }
 
-    return open;
+  function saleOpen() public timedTransition returns(bool open) {
+    open = ((now >= presale_StartDate && now <= presale_EndDate) ||
+           (now >= publicSale_StartDate && now <= publicSale_EndDate)) &&
+           (currentStage == Stages.PRESALE || currentStage == Stages.PUBLICSALE);
   }
 
   /* function distributeTokens(address[] beneficiaries, uint256[] amounts) public onlyOwner atStage(Stages.FINALAIZED) {
@@ -138,7 +144,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
     publicSale_StartDate = presale_EndDate + 10 days;
     publicSale_EndDate = publicSale_StartDate + 30 days;
     publicSale_TokenCap = publicSale_TokenCap.add(presale_TokenCap.sub(presale_TokesSold));
-    publicSale_Cap = publicSale_Cap.add(presale_Cap.sub(weiRaised).sub(changeDue));
+    publicSale_Cap = publicSale_Cap.add(presale_Cap.sub(weiRaised.sub(changeDue)));
     currentStage = Stages.BREAK;
   }
 
@@ -149,6 +155,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
     // Finish token minting
     //require(MintableToken(token).finishMinting());
     // Set token timelock
+    currentStage = Stages.FINALAIZED;
   }
 
 
@@ -170,8 +177,9 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
       acceptedValue = acceptedValue.sub(changeDue);
     }
     uint256 currentCap = getCurrentCap();
-    if(weiRaised.add(acceptedValue) > currentCap){
-      changeDue = changeDue.add(weiRaised.add(acceptedValue).sub(currentCap));
+    uint256 raised = getRaisedForCurrentStage();
+    if(raised.add(acceptedValue) > currentCap){
+      changeDue = changeDue.add(raised.add(acceptedValue).sub(currentCap));
       acceptedValue = _weiAmount.sub(changeDue);
       capReached = true;
     }
@@ -186,7 +194,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
   function _getTokenAmount(uint256 _weiAmount) internal view returns (uint256 amount) {
     amount = (_weiAmount.sub(changeDue)).mul(1000).div(rate); // Multiplication to account for the decimal cases in the rate
     if(currentStage == Stages.PRESALE){
-      amount = amount.add(amount.mul(25).div(100)); //Add bonus 
+      amount = amount.add(amount.mul(25).div(100)); //Add bonus
     }
   }
 
@@ -200,10 +208,12 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
 
     if(currentStage == Stages.PRESALE){
       presale_TokesSold = presale_TokesSold.add(tokenAmount);
+      presale_WeiRaised = presale_WeiRaised.add(_weiAmount.sub(changeDue));
       if(capReached)
         finalizePresale();
     } else{
       publicSale_TokesSold = publicSale_TokesSold.add(tokenAmount);
+      publicSale_WeiRaised = publicSale_WeiRaised.add(_weiAmount.sub(changeDue));
       if(capReached)
         finalizeSale();
     }
@@ -225,7 +235,14 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
     contributions[_beneficiary] = contributions[_beneficiary].add(_weiAmount.sub(changeDue));
   }
 
+  /**
+   * @dev Determines how ETH is stored/forwarded on purchases.
+   */
+  function _forwardFunds() internal {
+    wallet.transfer(msg.value.sub(changeDue));
+  }
+
 
 }
-
-// 15, "0xca35b7d915458ef540ade6068dfe2f44e8fa733c", "0xbbf289d846208c16edc8474705c748aff07732db", "19200000000000000000000", "120000000000000000000"
+// Rate, wallet, token, presalecap, publicSaleCap
+// 15, "0xca35b7d915458ef540ade6068dfe2f44e8fa733c", "0xbbf289d846208c16edc8474705c748aff07732db", "19200000000000000000", "120000000000000000"
