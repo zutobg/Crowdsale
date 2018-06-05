@@ -3,6 +3,7 @@ pragma solidity 0.4.24;
 import 'openzeppelin-solidity/contracts/crowdsale/emission/MintedCrowdsale.sol';
 import 'openzeppelin-solidity/contracts/crowdsale/validation/WhitelistedCrowdsale.sol';
 import './SolidifiedToken.sol';
+import './Distributable.sol';
 import 'openzeppelin-solidity/contracts/lifecycle/Pausable.sol';
 
 contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
@@ -133,11 +134,13 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
            (currentStage == Stages.PRESALE || currentStage == Stages.PUBLICSALE);
   }
 
-  /* function distributeTokens(address[] beneficiaries, uint256[] amounts) public onlyOwner atStage(Stages.FINALAIZED) {
-    for(uint i = 0; i < beneficiaries.length; i++){
-      _deliverTokens(beneficiaries[i], amounts[i]);
+  function distributeTokens() public onlyOwner atStage(Stages.FINALAIZED) {
+    uint256 totalSold = presale_TokesSold.add(publicSale_TokesSold);
+    for(uint i = 0; i < partners.length; i++){
+      uint256 amount = percentages[partners[i]].mul(totalSold).div(100);
+      _deliverTokens(partners[i], amount);
     }
-  } */
+  }
 
   function finalizePresale() atStage(Stages.PRESALE) public{
     presale_EndDate = now;
@@ -149,11 +152,10 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
   }
 
   function finalizeSale() public {
-    // Mint tokens to founders and partnes
-    //distributeTokens();
+    publicSale_EndDate = now;
+    // Mint tokens to founders and partnes -> distributeTokens();
     // Enable token transfer
     // Finish token minting
-    //require(MintableToken(token).finishMinting());
     // Set token timelock
     currentStage = Stages.FINALAIZED;
   }
@@ -168,7 +170,6 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
    */
   function _preValidatePurchase(address _beneficiary, uint256 _weiAmount) timedTransition isWhitelisted(_beneficiary) internal {
     require(saleOpen(), "Sale is Closed");
-    //require(_weiAmount >= minimumContribution, "Contribution below minimum");
 
     // Check for edge cases
     uint256 acceptedValue = _weiAmount;
