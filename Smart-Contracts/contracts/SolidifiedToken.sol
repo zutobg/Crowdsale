@@ -5,7 +5,7 @@ import 'openzeppelin-solidity/contracts/token/ERC20/MintableToken.sol';
 contract SolidifiedToken is MintableToken {
 
   string public constant name = "SolidifiedToken";
-  string public constant symbol = "SLD";
+  string public constant symbol = "SOLID";
   uint8  public constant decimals = 18;
 
   uint constant DECIMAL_CASES = 10 ** 18;
@@ -19,8 +19,9 @@ contract SolidifiedToken is MintableToken {
 
   } */
 
-  function setTransferEnablingDate(uint256 date) public onlyOwner {
+  function setTransferEnablingDate(uint256 date) public onlyOwner returns(bool success) {
     transferEnablingDate = date;
+    return true;
   }
 
   function enableTransfer() public {

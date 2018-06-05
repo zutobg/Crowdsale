@@ -6,7 +6,7 @@ import './SolidifiedToken.sol';
 import './Distributable.sol';
 import 'openzeppelin-solidity/contracts/lifecycle/Pausable.sol';
 
-contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
+contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distributable {
 
   enum Stages{
     SETUP,
@@ -44,7 +44,6 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
   uint256 changeDue;
   bool capReached;
 
-
   constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 presaleCap, uint256 publicCap) public Crowdsale(_rate,_wallet,_token) {
     presale_TokenCap = 1600000 ether;
     publicSale_TokenCap = 800000 ether;
@@ -76,7 +75,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
   }
 
   function updateStage() timedTransition {
-    //Satge Conversions not covered by times Transitions
+    //Satge Conversions not covered by timed Transitions
     if(currentStage == Stages.PRESALE){
       if(presale_Cap.sub(weiRaised) < minimumContribution)
         finalizePresale();
@@ -142,7 +141,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
     }
   }
 
-  function finalizePresale() atStage(Stages.PRESALE) public{
+  function finalizePresale() atStage(Stages.PRESALE) internal{
     presale_EndDate = now;
     publicSale_StartDate = presale_EndDate + 10 days;
     publicSale_EndDate = publicSale_StartDate + 30 days;
@@ -151,12 +150,9 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
     currentStage = Stages.BREAK;
   }
 
-  function finalizeSale() public {
+  function finalizeSale() atStage(Stages.PUBLICSALE) internal {
     publicSale_EndDate = now;
-    // Mint tokens to founders and partnes -> distributeTokens();
-    // Enable token transfer
-    // Finish token minting
-    // Set token timelock
+    require(SolidifiedToken(token).setTransferEnablingDate(now + 182 days));
     currentStage = Stages.FINALAIZED;
   }
 
@@ -168,7 +164,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable {
    * @param _beneficiary Address performing the token purchase
    * @param _weiAmount Value in wei involved in the purchase
    */
-  function _preValidatePurchase(address _beneficiary, uint256 _weiAmount) timedTransition isWhitelisted(_beneficiary) internal {
+  function _preValidatePurchase(address _beneficiary, uint256 _weiAmount) isWhitelisted(_beneficiary) internal {
     require(saleOpen(), "Sale is Closed");
 
     // Check for edge cases
