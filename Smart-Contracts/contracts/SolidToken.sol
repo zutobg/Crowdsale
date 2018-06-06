@@ -2,9 +2,9 @@ pragma solidity 0.4.24;
 
 import 'openzeppelin-solidity/contracts/token/ERC20/MintableToken.sol';
 
-contract SolidifiedToken is MintableToken {
+contract SolidToken is MintableToken {
 
-  string public constant name = "SolidifiedToken";
+  string public constant name = "SolidToken";
   string public constant symbol = "SOLID";
   uint8  public constant decimals = 18;
 

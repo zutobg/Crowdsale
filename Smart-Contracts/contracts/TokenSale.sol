@@ -2,7 +2,7 @@ pragma solidity 0.4.24;
 
 import 'openzeppelin-solidity/contracts/crowdsale/emission/MintedCrowdsale.sol';
 import 'openzeppelin-solidity/contracts/crowdsale/validation/WhitelistedCrowdsale.sol';
-import './SolidifiedToken.sol';
+import './SolidToken.sol';
 import './Distributable.sol';
 import 'openzeppelin-solidity/contracts/lifecycle/Pausable.sol';
 
@@ -106,7 +106,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
 
   function setUpToken(address _token) onlyOwner atStage(Stages.SETUP) internal {
     token = ERC20(_token);
-    require(SolidifiedToken(_token).owner() == address(this), "Issue with token setup");
+    require(SolidToken(_token).owner() == address(this), "Issue with token setup");
   }
 
   /**
@@ -158,7 +158,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
 
   function finalizeSale() atStage(Stages.PUBLICSALE) internal {
     publicSale_EndDate = now;
-    require(SolidifiedToken(token).setTransferEnablingDate(now + 182 days));
+    require(SolidToken(token).setTransferEnablingDate(now + 182 days));
     currentStage = Stages.FINALAIZED;
   }
 

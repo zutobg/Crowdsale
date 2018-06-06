@@ -4,11 +4,11 @@ import {duration, increaseTimeTo} from './helpers/increaseTime.js';
 import assertRevert from './helpers/assertRevert';
 import ether from './helpers/ether.js'
 
-const SolidifiedToken = artifacts.require('../SolidifiedToken.sol');
+const SolidToken = artifacts.require('../SolidToken.sol');
 const TokenSale = artifacts.require('../TokenSale.sol');
 
 const deployAndSetup = async (rate, wallet, presaleCap, publicSaleCap, initialDate)=> {
-  let token = await SolidifiedToken.new();
+  let token = await SolidToken.new();
   let sale = await TokenSale.new(rate, wallet, token.address, presaleCap, publicSaleCap);
   await token.transferOwnership(sale.address);
   await sale.setupSale(initialDate, token.address);
@@ -174,7 +174,7 @@ contract('TokenSale', (accounts) => {
 
     before(async () => {
       date = await latestTime();
-      token = await SolidifiedToken.new();
+      token = await SolidToken.new();
       sale = await TokenSale.new(rate, wallet, token.address, newPresaleCap, newPublicCap);
       await token.transferOwnership(sale.address);
       await sale.addToWhitelist(buyer);
