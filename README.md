@@ -11,20 +11,20 @@ Main sale: 20% of the total supply (800,000 SOLID tokens)
 
 6-month lock period on all sold tokens, from the end of the main sale.
 
-#### Sale Details
-##### Targeted Presale
+## Sale Details
+### Targeted Presale
 - Cap of 1,600,000 SOLID tokens(40% of the total supply @ 20% discount)
 - Duration: max 3 months
 - Discount: 20%
 
 If less than 1,600,000 SOLID tokens are sold during presale, the remaining limit carries over to the main sale.
 
-##### Main Sale
+### Main Sale
 - Cap for both sales to be 2,400,000 SOLID tokens.
 - Length: 1 month
 - No discount
 
-##### General Rules
+### General Rules
 - No Soft Cap (no Refunds).
 - No Token Burning
 - Minimum Participation: 0.5 ETH
@@ -43,35 +43,31 @@ The total supply is determined by how much we sell during Presale + Main sale(wh
 Aftewards tokens will be minted to:
 * Team Fund (20% of total supply)
 Vesting: 1 year cliff, 3 year total.
-
 * Community & Audit Training Fund (5% of total supply)
-
 * Economics Reserve (10% of total supply)
-
 * Airdrops (0.5% of total supply)
 
 ps. These percentages are subject to change.
 
 
-Whale protection:  Combination of: Maximum participation limit, KYC’d addresses.
+__Whale protection:__  Combination of maximum participation limit and KYC’d addresses.
 
-Edge Cases
-Last transaction for either of the sales should get refunded whatever it sent over.
+__Edge Cases:__ Last transaction for either of the sales should get refunded whatever it sent over.
 
-#### Intended Behavior
+## Intended Behavior
 
 The sale is based on the Open Zeppelin framework, with a few additions, the biggest one being stages, because there will be multiple phases.
 
-1) Sale is deployed with SETUP.
-2) After configuration the sale move to READY
-3) When the start date arrives the sale should go to PRESALE(either by calling `updateStage` or making a purchase), since it's resolved in `timedTransition`
-3) The PRESALE stage ends when either the cap is reached or the endTime arrives.
+1) Sale is deployed with `SETUP`.
+2) After configuration the sale move to `READY`.
+3) When the start date arrives the sale should go to `PRESALE`(either by calling `updateStage` or making a purchase), since it's resolved in `timedTransition`
+3) The `PRESALE` stage ends when either the cap is reached or the endTime arrives.
   3.a) If the cap is reached the stage will move during the last transaction in the `_postValidatePurchase`
   3.b) If the time is reached, the transition must happen in `updateStage`, since making a purchase will revert the stage.
   3.c) If the sale enter the state where the cap haven't been reached but the remaining amount is less than the minimum purchase, the transition should happen in `updateStage`;
-4) the BREAK stage should last 10 days(counting from the finalization).
-5) The PUBLICSALE should start when the time arrives, either by calling `updateStage` or making a purchase.
-6) The PUBLICSALE stage ends when either the cap is reached or the endTime arrives.
+4) the `BREAK` stage should last 10 days(counting from the finalization).
+5) The `PUBLICSALE` should start when the time arrives, either by calling `updateStage` or making a purchase.
+6) The `PUBLICSALE` stage ends when either the cap is reached or the endTime arrives.
   3.a) If the cap is reached the stage will move during the last transaction in the `_postValidatePurchase`
   3.b) If the time is reached, the transition must happen in `updateStage`, since making a purchase will revert the stage.
   3.c) If the sale enter the state where the cap haven't been reached but the remaining amount is less than the minimum purchase, the transition should happen in `updateStage`;
@@ -92,12 +88,12 @@ The values will be harcoded in the `Distributable.sol` with percentages. When th
 
 The `distributeTokens` functions one of the few owner restricted function(although it doesn't need to be);
 
-###### Note on units
+##### Note on units
 Given the solidity restriction to floating point numbers, some variable are considered differently.
 * The `rate` will be divided by `1000`. A rate of `15` actually means `0.015`. This is considered in the contracts
 * The `percentages` will be divided by `10`. A percentage of `14` means `1.4%`   
 
-#### Known Weaknesses
+## Known Weaknesses
 * In overpaid transactions that require change, the TokenPurchase event will be emitted with the wrong value(but correct token amount).
 * Keeping the changeDue variable in storage makes the purchase a bit more expensive gas-wise
 * Some parameters are loosely coupled(the relationship between eth cap and token cap, as well the token distribution percentages) and might not work
