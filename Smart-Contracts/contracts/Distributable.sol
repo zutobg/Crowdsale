@@ -1,24 +1,36 @@
 pragma solidity 0.4.24;
 
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+
 contract Distributable {
 
+  using SafeMath for uint256;
+
   //Not actual addresses
-  address[] public partners = [0xc4d557d795ce16c49624e48045b380f169e00001, 0xc4d557d795ce16c49624e48045b380f169e0002, 0xc4d557d795ce16c49624e48045b380f169e00003, 0xc4d557d795ce16c49624e48045b380f169e0004, 0xc4d557d795ce16c49624e48045b380f169e00005, 0xc4d557d795ce16c49624e48045b380f169e0006, 0xc4d557d795ce16c49624e48045b380f169e00007, 0xc4d557d795ce16c49624e48045b380f169e0008,0xc4d557d795ce16c49624e48045b380f169e00009, 0xc4d557d795ce16c49624e48045b380f169e00010];
+  address[] public partners = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10];
 
   mapping(address => uint) public percentages;
 
   constructor(){
     //Not actual percentages
-    percentages[0xc4d557d795ce16c49624e48045b380f169e00001] = 5;
-    percentages[0xc4d557d795ce16c49624e48045b380f169e00002] = 5;
-    percentages[0xc4d557d795ce16c49624e48045b380f169e00003] = 5;
-    percentages[0xc4d557d795ce16c49624e48045b380f169e00004] = 5;
-    percentages[0xc4d557d795ce16c49624e48045b380f169e00005] = 5;
-    percentages[0xc4d557d795ce16c49624e48045b380f169e00006] = 5;
-    percentages[0xc4d557d795ce16c49624e48045b380f169e00007] = 5;
-    percentages[0xc4d557d795ce16c49624e48045b380f169e00008] = 5;
-    percentages[0xc4d557d795ce16c49624e48045b380f169e00009] = 5;
-    percentages[0xc4d557d795ce16c49624e48045b380f169e00010] = 5;
+    percentages[0x01] = 1;
+    percentages[0x02] = 1;
+    percentages[0x03] = 1;
+    percentages[0x04] = 1;
+    percentages[0x05] = 1;
+    percentages[0x06] = 1;
+    percentages[0x07] = 1;
+    percentages[0x08] = 1;
+    percentages[0x09] = 1;
+    percentages[0x10] = 1;
+  }
+
+  function checkPercentages(uint256 maxPercentage) public constant returns(bool check){
+    uint256 counter = 0;
+    for(uint i = 0; i < partners.length; i++){
+      counter = counter.add(percentages[partners[i]]);
+    }
+    check = counter <= maxPercentage;
   }
 
 }

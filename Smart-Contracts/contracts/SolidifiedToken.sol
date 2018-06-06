@@ -25,7 +25,7 @@ contract SolidifiedToken is MintableToken {
   }
 
   function enableTransfer() public {
-    require(now > transferEnablingDate);
+    require(transferEnablingDate != 0 && now >= transferEnablingDate);
     transfersEnabled = true;
   }
 

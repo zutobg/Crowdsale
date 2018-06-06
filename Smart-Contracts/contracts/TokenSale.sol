@@ -8,6 +8,9 @@ import 'openzeppelin-solidity/contracts/lifecycle/Pausable.sol';
 
 contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distributable {
 
+  //TO BE REMOVED
+  event DEBUG(uint256 value);
+
   enum Stages{
     SETUP,
     READY,
@@ -134,9 +137,12 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   }
 
   function distributeTokens() public onlyOwner atStage(Stages.FINALAIZED) {
-    uint256 totalSold = presale_TokesSold.add(publicSale_TokesSold);
+    require(checkPercentages(40));//Magic number -> Only 60% will be sold, therefore all other % must be less than 40%
+    uint256 totalTokens = (presale_TokesSold.add(publicSale_TokesSold)).mul(10).div(6);
     for(uint i = 0; i < partners.length; i++){
-      uint256 amount = percentages[partners[i]].mul(totalSold).div(100);
+      uint256 amount = percentages[partners[i]].mul(totalTokens).div(100);
+      DEBUG(i);
+      DEBUG(amount);
       _deliverTokens(partners[i], amount);
     }
   }
@@ -169,8 +175,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
 
     // Check for edge cases
     uint256 acceptedValue = _weiAmount;
-    if(contributions[msg.sender].add(acceptedValue) > maximumContribution){
-      changeDue = contributions[msg.sender].add(acceptedValue).sub(maximumContribution);
+    if(contributions[_beneficiary].add(acceptedValue) > maximumContribution){
+      changeDue = (contributions[_beneficiary].add(acceptedValue)).sub(maximumContribution);
       acceptedValue = acceptedValue.sub(changeDue);
     }
     uint256 currentCap = getCurrentCap();
@@ -229,7 +235,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    * @param _weiAmount Value in wei involved in the purchase
    */
   function _updatePurchasingState(address _beneficiary, uint256 _weiAmount) internal {
-    contributions[_beneficiary] = contributions[_beneficiary].add(_weiAmount.sub(changeDue));
+    contributions[_beneficiary] = contributions[_beneficiary].add(_weiAmount).sub(changeDue);
   }
 
   /**

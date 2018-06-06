@@ -56,10 +56,12 @@ contract('TokenSale', (accounts) => {
     })
   })
 
-  context("Buying funcionality", () =>{
+  context("Buying and finalization", () =>{
 
     const buyer = accounts[2];
-    const value = ether(2);
+    const buyer2 = accounts[5];
+    const buyer3 = accounts[3];
+    const value = ether(3);
     let date;
 
     before(async() =>{
@@ -75,7 +77,7 @@ contract('TokenSale', (accounts) => {
       await sale.buyTokens(buyer, {value: value});
       let tokenBal = await token.balanceOf(buyer);
       let raised = await sale.weiRaised();
-      assert.equal(tokenBal.toNumber(), ether(2) / 0.012)
+      assert.equal(tokenBal.toNumber(), value / 0.012)
       assert.equal(raised.toNumber(), value);
     })
 
@@ -84,12 +86,78 @@ contract('TokenSale', (accounts) => {
       await assertRevert(sale.buyTokens(buyer, {value: belowMinimum}));
     })
 
-    it("Returns values above the maximum", async() => {
+    it("Give changes correctly", async() => {
       const aboveMax = ether(120);
-      await web3.eth.sendTransaction({from: accounts[3], to: buyer, value: ether(90)});
-      await sale.buyTokens(buyer, {from: buyer, value: aboveMax});
-      const contribution = await sale.contributions(buyer);
-      assert.equal(contribution.toNumber(), ether(100));
+      await web3.eth.sendTransaction({from: accounts[3], to: buyer2, value: ether(90)});
+      let initialBal = await web3.eth.getBalance(buyer2);
+      await sale.buyTokens(buyer2, {from: buyer2, value: aboveMax});
+      let endBalance = await web3.eth.getBalance(buyer2);
+      let contribution = await sale.contributions(buyer2);
+      assert.equal(contribution.toNumber(), ether(100).toNumber());
+    })
+
+    it("Gives correct amount of tokens for PRESALE", async ()=>{
+      let cont1 = await sale.contributions(buyer);
+      let cont2 = await sale.contributions(buyer2);
+      let bal1 = await token.balanceOf(buyer);
+      let bal2 = await token.balanceOf(buyer2);
+      const discountRate = rate * 0.8 / 1000;
+      assert.equal(cont1.toNumber() / discountRate, bal1.toNumber());
+      assert.equal(cont2.toNumber() / discountRate, bal2.toNumber());
+    })
+
+    it("Transfer funds correctly to the wallet", async () => {
+      let cont1 = await sale.contributions(buyer);
+      let cont2 = await sale.contributions(buyer2);
+      let bal = await web3.eth.getBalance(wallet);
+      let profit = bal.toNumber() - ether(100);
+      assert.equal(cont1.toNumber() + cont2.toNumber(), profit);
+    })
+
+    it("Finalizes correctly the presale", async()=>{
+      await increaseTimeTo(date + duration.days(91));
+      await sale.updateStage();
+      let pEndDate = await sale.presale_EndDate();
+      let pbStarDate = await sale.publicSale_StartDate();
+      let preSold = await sale.presale_TokesSold();
+      let preTkCap = await sale.presale_TokenCap();
+      let preCap = await sale.presale_Cap();
+      let preRaised = await sale.presale_WeiRaised()
+      let pubTkCap = await sale.publicSale_TokenCap();
+      let pubCap = await sale.publicSale_Cap();
+
+      assert.equal(pubTkCap.toNumber(), ether(800000).toNumber() + preTkCap.toNumber() - preSold.toNumber());
+      assert.equal(pubCap.toNumber(), ether(12000).toNumber() + preCap.toNumber() - preRaised.toNumber());
+    })
+
+    it("Gives correct amount of tokens for PUBLICSALE", async ()=>{
+      await increaseTimeTo(date + duration.days(102));
+      await sale.buyTokens(buyer3, {value: value});
+      let cont1 = await sale.contributions(buyer3);
+      let bal1 = await token.balanceOf(buyer3);
+      const discountRate = rate / 1000;
+      assert.equal((cont1.toNumber() / discountRate) / ether(1), bal1.toNumber() / ether(1));
+    })
+
+    it("Finalizes correctly the PublicSale", async() => {
+      await increaseTimeTo(date + duration.days(150));
+      await sale.updateStage();
+      let stage = await sale.currentStage();
+      let dateToken = await token.transferEnablingDate();
+      let now = await latestTime();
+      assert.equal(stage.toNumber(), 5)
+      assert.isTrue(dateToken.toNumber() - (now + duration.days(182)) < 1)
+    })
+
+    it("Distributes the token correctly", async() => {
+      const partAdd = ["0x01", "0x02", "0x03", "0x04", "0x05", "0x06", "0x07", "0x08","0x09", "0x10"];
+      let supply = await token.totalSupply();
+      let totalTokens = supply.toNumber() * 10 / 6
+      await sale.distributeTokens();
+      for(var i = 0; i < partAdd.length; i++){
+        let bal = await token.balanceOf(partAdd[i]);
+        assert.equal(bal.toNumber() / totalTokens , 0.01);
+      }
     })
 
   })
@@ -167,7 +235,5 @@ contract('TokenSale', (accounts) => {
       let stage = await sale.currentStage();
       assert.equal(stage.toNumber(), 5);
     })
-
   })
-
 })
