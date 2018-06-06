@@ -94,5 +94,3 @@ Given the solidity restriction to floating point numbers, some variable are cons
 ## Known Weaknesses
 * In overpaid transactions that require change, the TokenPurchase event will be emitted with the wrong value(but correct token amount).
 * Keeping the changeDue variable in storage makes the purchase a bit more expensive gas-wise
-* Some parameters are loosely coupled(the relationship between eth cap and token cap, as well the token distribution percentages) and might not work
-under all parameters.
