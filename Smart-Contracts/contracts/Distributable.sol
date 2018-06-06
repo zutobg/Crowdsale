@@ -14,16 +14,16 @@ contract Distributable {
 
   constructor(){
     //Not actual percentages
-    percentages[0x01] = 1;
-    percentages[0x02] = 1;
-    percentages[0x03] = 1;
-    percentages[0x04] = 1;
-    percentages[0x05] = 1;
-    percentages[0x06] = 1;
-    percentages[0x07] = 1;
-    percentages[0x08] = 1;
-    percentages[0x09] = 1;
-    percentages[0x10] = 1;
+    percentages[0x01] = 10;
+    percentages[0x02] = 10;
+    percentages[0x03] = 10;
+    percentages[0x04] = 10;
+    percentages[0x05] = 10;
+    percentages[0x06] = 10;
+    percentages[0x07] = 10;
+    percentages[0x08] = 10;
+    percentages[0x09] = 10;
+    percentages[0x10] = 10;
   }
 
   function checkPercentages(uint256 maxPercentage) public constant returns(bool check){
@@ -31,7 +31,7 @@ contract Distributable {
     for(uint i = 0; i < partners.length; i++){
       counter = counter.add(percentages[partners[i]]);
     }
-    check = counter <= maxPercentage;
+    check = counter <= maxPercentage.mul(10);
   }
 
 }

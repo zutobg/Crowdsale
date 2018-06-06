@@ -21,7 +21,9 @@ contract('TokenSale', (accounts) => {
   const rate = 15;
   const wallet = accounts[9];
   const presaleCap = ether(19200);
+  const presaleTokenCap = ether(1600000);
   const mainSaleCap = ether(12000);
+  const mainSaleTokenCap = ether(800000);
 
   let token,sale = {};
 
@@ -40,7 +42,9 @@ contract('TokenSale', (accounts) => {
     it("Contract is deployed with correct state", async () => {
       let r = await sale.rate();
       let prc = await sale.presale_Cap();
+      let prct = await sale.presale_TokenCap();
       let pbc = await sale.mainSale_Cap();
+      let pbct = await sale.mainSale_TokenCap();
       let tk = await sale.token();
       let sd = await sale.presale_StartDate();
       let sed = await sale.presale_EndDate();
@@ -48,7 +52,9 @@ contract('TokenSale', (accounts) => {
 
       assert.equal(rate, r.toNumber());
       assert.equal(presaleCap, prc.toNumber());
+      assert.equal(presaleTokenCap, prct.toNumber());
       assert.equal(mainSaleCap, pbc.toNumber());
+      assert.equal(mainSaleTokenCap, pbct.toNumber());
       assert.equal(token.address, tk);
       assert.equal(date, sd.toNumber());
       assert.equal(sed.toNumber(), date + duration.days(90));

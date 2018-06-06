@@ -8,8 +8,8 @@ contract SolidToken is MintableToken {
   string public constant symbol = "SOLID";
   uint8  public constant decimals = 18;
 
-  uint256 constant DECIMAL_CASES = 10 ** 18;
-  uint256 constant supplyCap = 4000000 * DECIMAL_CASES;
+  uint256 constant DECIMAL_PLACES = 10 ** 18;
+  uint256 constant supplyCap = 4000000 * DECIMAL_PLACES;
 
   bool public transfersEnabled = false;
   uint256 public transferEnablingDate;

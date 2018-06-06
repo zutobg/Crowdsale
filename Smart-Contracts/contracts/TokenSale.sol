@@ -8,9 +8,6 @@ import 'openzeppelin-solidity/contracts/lifecycle/Pausable.sol';
 
 contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distributable {
 
-  //TO BE REMOVED
-  event DEBUG(uint256 value);
-
   //Global Variables
   mapping(address => uint) public contributions;
   Stages public currentStage;
@@ -90,14 +87,13 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     @param _wallet The address that recieves _forwardFunds
     @param _token A token contract. Will be overriden later(needed fot OZ constructor)
     @param _presaleCap the ETH cap of the presale.
-    @param _publicCap the ETH cap of the public sale.
+    @param _mainCap the ETH cap of the public sale.
   **/
-  constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 _presaleCap, uint256 _publicCap) public Crowdsale(_rate,_wallet,_token) {
-    //TODO: Enforce a tight relation between these 4 vars
-    presale_TokenCap = 1600000 ether;
-    mainSale_TokenCap = 800000 ether;
+  constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 _presaleCap, uint256 _mainCap) public Crowdsale(_rate,_wallet,_token) {
+    presale_TokenCap = _presaleCap.div(rate).mul(1250); // shorthand for (cap / rate * 1000) * 1.25
+    mainSale_TokenCap = _mainCap.div(rate).mul(1000);
     presale_Cap = _presaleCap;
-    mainSale_Cap = _publicCap;
+    mainSale_Cap = _mainCap;
 
     minimumContribution = 0.5 ether;
     maximumContribution = 100 ether;
@@ -117,6 +113,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     presale_StartDate = initialDate;
     presale_EndDate = presale_StartDate + 90 days;
     token = ERC20(tokenAddress);
+    require(SolidToken(tokenAddress).totalSupply() == 0, "Some token have already been distributed");
     require(SolidToken(tokenAddress).owner() == address(this), "Token has the wrong ownership");
     currentStage = Stages.READY;
   }
@@ -188,7 +185,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     require(checkPercentages(40));//Magic number -> Only 60% will be sold, therefore all other % must be less than 40%
     uint256 totalTokens = (presale_TokesSold.add(mainSale_TokesSold)).mul(10).div(6);
     for(uint i = 0; i < partners.length; i++){
-      uint256 amount = percentages[partners[i]].mul(totalTokens).div(100);
+      uint256 amount = percentages[partners[i]].mul(totalTokens).div(1000);
       _deliverTokens(partners[i], amount);
     }
     require(SolidToken(token).finishMinting());
