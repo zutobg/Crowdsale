@@ -8,22 +8,27 @@ contract SolidToken is MintableToken {
   string public constant symbol = "SOLID";
   uint8  public constant decimals = 18;
 
-  uint constant DECIMAL_CASES = 10 ** 18;
-
-  uint constant supplyCap = 4000000 * DECIMAL_CASES;
+  uint256 constant DECIMAL_CASES = 10 ** 18;
+  uint256 constant supplyCap = 4000000 * DECIMAL_CASES;
 
   bool public transfersEnabled = false;
   uint256 public transferEnablingDate;
 
-  /* constructor() public {
 
-  } */
-
+  /**
+   * @dev Sets the date that the tokens becomes transferable
+   * @param date The timestamp of the date
+   * @return A boolean that indicates if the operation was successful.
+   */
   function setTransferEnablingDate(uint256 date) public onlyOwner returns(bool success) {
     transferEnablingDate = date;
     return true;
   }
 
+
+  /**
+   * @dev Enables the token transfer
+   */
   function enableTransfer() public {
     require(transferEnablingDate != 0 && now >= transferEnablingDate);
     transfersEnabled = true;
@@ -40,10 +45,7 @@ contract SolidToken is MintableToken {
    */
   function mint(address _to, uint256 _amount) onlyOwner canMint public returns (bool) {
     require(totalSupply_.add(_amount) <= supplyCap);
-    totalSupply_ = totalSupply_.add(_amount);
-    balances[_to] = balances[_to].add(_amount);
-    emit Mint(_to, _amount);
-    emit Transfer(address(0), _to, _amount);
+    require(super.mint(_to, _amount));
     return true;
   }
 
