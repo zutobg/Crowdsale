@@ -2,17 +2,17 @@
 
 ## SOLID Token Details
 * ERC20 mintable token
-* 18 decimal cases
-* 1 Solid token = 0.015 ETH (~$9 @ 595.17 as of June 2, 2018)
+* 18 decimal places
+* 1 Solid token = 0.015 ETH
 
 * Total max supply: 4,000,000 SOLID tokens
-Targeted Presale: 40% of the total supply @ 20% discount (1,600,000 SOLID tokens)
-Main sale: 20% of the total supply (800,000 SOLID tokens)
+
 
 6-month lock period on all sold tokens, from the end of the main sale.
 
 ## Sale Details
 ### Targeted Presale
+- Targeted at auditors, Ethereum projects, developers and security experts
 - Cap of 1,600,000 SOLID tokens(40% of the total supply @ 20% discount)
 - Duration: max 3 months
 - Discount: 20%
@@ -20,7 +20,7 @@ Main sale: 20% of the total supply (800,000 SOLID tokens)
 If less than 1,600,000 SOLID tokens are sold during presale, the remaining limit carries over to the main sale.
 
 ### Main Sale
-- Cap for both sales to be 2,400,000 SOLID tokens.
+- Total cap for both sales to be 2,400,000 SOLID tokens.
 - Length: 1 month
 - No discount
 
@@ -40,14 +40,12 @@ Dedicated function to Solidified and partners:
 
 The total supply is determined by how much we sell during Presale + Main sale(which will represent 60% of the existing tokens)
 
-Aftewards tokens will be minted to:
+Afterwards tokens will be minted to:
 * Team Fund (20% of total supply)
 Vesting: 1 year cliff, 3 year total.
-* Community & Audit Training Fund (5% of total supply)
-* Economics Reserve (10% of total supply)
+* Community & Audit Training Fund (10% of total supply)
+* Economics Reserve (5% of total supply)
 * Airdrops (0.5% of total supply)
-
-ps. These percentages are subject to change.
 
 
 __Whale protection:__  Combination of maximum participation limit and KYC’d addresses.
@@ -66,8 +64,8 @@ The sale is based on the Open Zeppelin framework, with a few additions, the bigg
   3.b) If the time is reached, the transition must happen in `updateStage`, since making a purchase will revert the stage.
   3.c) If the sale enter the state where the cap haven't been reached but the remaining amount is less than the minimum purchase, the transition should happen in `updateStage`;
 4) the `BREAK` stage should last 10 days(counting from the finalization).
-5) The `PUBLICSALE` should start when the time arrives, either by calling `updateStage` or making a purchase.
-6) The `PUBLICSALE` stage ends when either the cap is reached or the endTime arrives.
+5) The `MAINSALE` should start when the time arrives, either by calling `updateStage` or making a purchase.
+6) The `MAINSALE` stage ends when either the cap is reached or the endTime arrives.
   3.a) If the cap is reached the stage will move during the last transaction in the `_postValidatePurchase`
   3.b) If the time is reached, the transition must happen in `updateStage`, since making a purchase will revert the stage.
   3.c) If the sale enter the state where the cap haven't been reached but the remaining amount is less than the minimum purchase, the transition should happen in `updateStage`;
@@ -75,7 +73,7 @@ The sale is based on the Open Zeppelin framework, with a few additions, the bigg
 
 The other meaningful addition is the `changeDue` and `capReached` variables.
 
-The change is needed when a purchase is overpaid, either when a buyer sends more than the personal cap or more than what is available. This should be calculated in `_preValidatePurchase` and saved in the storage to be transferred back to the investor in the `_postValidatePurchase`.
+The change is needed when a purchase is overpaid, either when a buyer sends more than the personal cap or more than what is available. This should be calculated in `_preValidatePurchase` and saved in the storage to be transferred back to the buyer in the `_postValidatePurchase`.
 
 All the sale parameters should be increased considering only the accepted amount.
 

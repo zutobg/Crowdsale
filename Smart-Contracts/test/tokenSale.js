@@ -7,9 +7,9 @@ import ether from './helpers/ether.js'
 const SolidToken = artifacts.require('../SolidToken.sol');
 const TokenSale = artifacts.require('../TokenSale.sol');
 
-const deployAndSetup = async (rate, wallet, presaleCap, publicSaleCap, initialDate)=> {
+const deployAndSetup = async (rate, wallet, presaleCap, mainSaleCap, initialDate)=> {
   let token = await SolidToken.new();
-  let sale = await TokenSale.new(rate, wallet, token.address, presaleCap, publicSaleCap);
+  let sale = await TokenSale.new(rate, wallet, token.address, presaleCap, mainSaleCap);
   await token.transferOwnership(sale.address);
   await sale.setupSale(initialDate, token.address);
 
@@ -21,7 +21,7 @@ contract('TokenSale', (accounts) => {
   const rate = 15;
   const wallet = accounts[9];
   const presaleCap = ether(19200);
-  const publicSaleCap = ether(12000);
+  const mainSaleCap = ether(12000);
 
   let token,sale = {};
 
@@ -31,7 +31,7 @@ contract('TokenSale', (accounts) => {
 
     before(async() =>{
       let now = await latestTime();
-      const values = await deployAndSetup(rate, wallet, presaleCap, publicSaleCap, now);
+      const values = await deployAndSetup(rate, wallet, presaleCap, mainSaleCap, now);
       token = values[0];
       sale = values[1];
       date = values[2];
@@ -40,7 +40,7 @@ contract('TokenSale', (accounts) => {
     it("Contract is deployed with correct state", async () => {
       let r = await sale.rate();
       let prc = await sale.presale_Cap();
-      let pbc = await sale.publicSale_Cap();
+      let pbc = await sale.mainSale_Cap();
       let tk = await sale.token();
       let sd = await sale.presale_StartDate();
       let sed = await sale.presale_EndDate();
@@ -48,7 +48,7 @@ contract('TokenSale', (accounts) => {
 
       assert.equal(rate, r.toNumber());
       assert.equal(presaleCap, prc.toNumber());
-      assert.equal(publicSaleCap, pbc.toNumber());
+      assert.equal(mainSaleCap, pbc.toNumber());
       assert.equal(token.address, tk);
       assert.equal(date, sd.toNumber());
       assert.equal(sed.toNumber(), date + duration.days(90));
@@ -66,7 +66,7 @@ contract('TokenSale', (accounts) => {
 
     before(async() =>{
       let initialDate = await latestTime();
-      const values = await deployAndSetup(rate, wallet, presaleCap, publicSaleCap, initialDate);
+      const values = await deployAndSetup(rate, wallet, presaleCap, mainSaleCap, initialDate);
       token = values[0];
       sale = values[1];
       date = values[2];
@@ -118,19 +118,19 @@ contract('TokenSale', (accounts) => {
       await increaseTimeTo(date + duration.days(91));
       await sale.updateStage();
       let pEndDate = await sale.presale_EndDate();
-      let pbStarDate = await sale.publicSale_StartDate();
+      let pbStarDate = await sale.mainSale_StartDate();
       let preSold = await sale.presale_TokesSold();
       let preTkCap = await sale.presale_TokenCap();
       let preCap = await sale.presale_Cap();
       let preRaised = await sale.presale_WeiRaised()
-      let pubTkCap = await sale.publicSale_TokenCap();
-      let pubCap = await sale.publicSale_Cap();
+      let pubTkCap = await sale.mainSale_TokenCap();
+      let pubCap = await sale.mainSale_Cap();
 
       assert.equal(pubTkCap.toNumber(), ether(800000).toNumber() + preTkCap.toNumber() - preSold.toNumber());
       assert.equal(pubCap.toNumber(), ether(12000).toNumber() + preCap.toNumber() - preRaised.toNumber());
     })
 
-    it("Gives correct amount of tokens for PUBLICSALE", async ()=>{
+    it("Gives correct amount of tokens for MAINSALE", async ()=>{
       await increaseTimeTo(date + duration.days(102));
       await sale.buyTokens(buyer3, {value: value});
       let cont1 = await sale.contributions(buyer3);
@@ -167,7 +167,7 @@ contract('TokenSale', (accounts) => {
   context("Stage Transitions", async() => {
 
     const newPresaleCap = presaleCap / 1000;
-    const newPublicCap = publicSaleCap / 1000;
+    const newPublicCap = mainSaleCap / 1000;
     const buyer = accounts[4];
 
     let date;
@@ -217,13 +217,13 @@ contract('TokenSale', (accounts) => {
       assert.equal(stage.toNumber(), 3);
     })
 
-    it("Fails to enter PUBLICSALE until initial time reaches", async () => {
+    it("Fails to enter MAINSALE until initial time reaches", async () => {
       await sale.updateStage();
       let stage = await sale.currentStage();
       assert.equal(stage.toNumber(), 3);
     })
 
-    it("Updates stages to PUBLICSALE when inital time arrives", async () => {
+    it("Updates stages to MAINSALE when inital time arrives", async () => {
       await increaseTimeTo(date + duration.days(15));
       await sale.updateStage();
       let stage = await sale.currentStage();

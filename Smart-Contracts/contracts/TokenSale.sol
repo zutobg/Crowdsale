@@ -25,13 +25,13 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   uint256 public presale_TokesSold;
   uint256 public presale_WeiRaised;
 
-  //PUBLICSALE VARIABLES
-  uint256 public publicSale_StartDate;
-  uint256 public publicSale_EndDate;
-  uint256 public publicSale_Cap;
-  uint256 public publicSale_TokenCap;
-  uint256 public publicSale_TokesSold;
-  uint256 public publicSale_WeiRaised;
+  //MAINSALE VARIABLES
+  uint256 public mainSale_StartDate;
+  uint256 public mainSale_EndDate;
+  uint256 public mainSale_Cap;
+  uint256 public mainSale_TokenCap;
+  uint256 public mainSale_TokesSold;
+  uint256 public mainSale_WeiRaised;
 
 
   //TEMPORARY VARIABLES - USED TO AVOID OVERRIDING MORE OPEN ZEPPELING FUNCTIONS
@@ -43,7 +43,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     READY,
     PRESALE,
     BREAK,
-    PUBLICSALE,
+    MAINSALE,
     FINALAIZED
   }
 
@@ -72,9 +72,9 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
       finalizePresale();
     }
     if(currentStage == Stages.BREAK && now > presale_EndDate + 10 days){
-      currentStage = Stages.PUBLICSALE;
+      currentStage = Stages.MAINSALE;
     }
-    if(currentStage == Stages.PUBLICSALE && now > publicSale_EndDate){
+    if(currentStage == Stages.MAINSALE && now > mainSale_EndDate){
       finalizeSale();
     }
     _;
@@ -92,12 +92,12 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     @param _presaleCap the ETH cap of the presale.
     @param _publicCap the ETH cap of the public sale.
   **/
-  constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 presaleCap, uint256 publicCap) public Crowdsale(_rate,_wallet,_token) {
+  constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 _presaleCap, uint256 _publicCap) public Crowdsale(_rate,_wallet,_token) {
     //TODO: Enforce a tight relation between these 4 vars
     presale_TokenCap = 1600000 ether;
-    publicSale_TokenCap = 800000 ether;
-    presale_Cap = presaleCap;
-    publicSale_Cap = publicCap;
+    mainSale_TokenCap = 800000 ether;
+    presale_Cap = _presaleCap;
+    mainSale_Cap = _publicCap;
 
     minimumContribution = 0.5 ether;
     maximumContribution = 100 ether;
@@ -110,14 +110,14 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
 
   /**
    * @dev Sets the initial date and token.
-   * @param _presaleSartDate A timestamp representing the start of the presale
-    @param _token  The address of the deployed SolidToken
+   * @param initialDate A timestamp representing the start of the presale
+    @param tokenAddress  The address of the deployed SolidToken
    */
   function setupSale(uint256 initialDate, address tokenAddress) onlyOwner atStage(Stages.SETUP) public {
-    presale_StartDate = _presaleSartDate;
+    presale_StartDate = initialDate;
     presale_EndDate = presale_StartDate + 90 days;
-    token = ERC20(_token);
-    require(SolidToken(_token).owner() == address(this), "Token has the wrong ownership");
+    token = ERC20(tokenAddress);
+    require(SolidToken(tokenAddress).owner() == address(this), "Token has the wrong ownership");
     currentStage = Stages.READY;
   }
 
@@ -136,8 +136,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
       if(presale_Cap.sub(weiRaised) < minimumContribution)
         finalizePresale();
     }
-    if(currentStage == Stages.PUBLICSALE){
-      if((publicSale_Cap.add(presale_Cap)).sub(weiRaised) < minimumContribution)
+    if(currentStage == Stages.MAINSALE){
+      if((mainSale_Cap.add(presale_Cap)).sub(weiRaised) < minimumContribution)
         currentStage = Stages.FINALAIZED;
     }
   }
@@ -148,8 +148,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    */
   function getCurrentCap() public  view returns(uint256 cap){
     cap = presale_Cap;
-    if(currentStage == Stages.PUBLICSALE){
-      cap = publicSale_Cap;
+    if(currentStage == Stages.MAINSALE){
+      cap = mainSale_Cap;
     }
   }
 
@@ -159,8 +159,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    */
   function getRaisedForCurrentStage() public view returns(uint256 raised){
     raised = presale_WeiRaised;
-    if(currentStage == Stages.PUBLICSALE)
-      raised = publicSale_WeiRaised;
+    if(currentStage == Stages.MAINSALE)
+      raised = mainSale_WeiRaised;
   }
 
   /**
@@ -169,8 +169,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    */
   function saleOpen() public timedTransition returns(bool open) {
     open = ((now >= presale_StartDate && now <= presale_EndDate) ||
-           (now >= publicSale_StartDate && now <= publicSale_EndDate)) &&
-           (currentStage == Stages.PRESALE || currentStage == Stages.PUBLICSALE);
+           (now >= mainSale_StartDate && now <= mainSale_EndDate)) &&
+           (currentStage == Stages.PRESALE || currentStage == Stages.MAINSALE);
   }
 
 
@@ -186,7 +186,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   function distributeTokens() public onlyOwner atStage(Stages.FINALAIZED) {
     require(!distributed);
     require(checkPercentages(40));//Magic number -> Only 60% will be sold, therefore all other % must be less than 40%
-    uint256 totalTokens = (presale_TokesSold.add(publicSale_TokesSold)).mul(10).div(6);
+    uint256 totalTokens = (presale_TokesSold.add(mainSale_TokesSold)).mul(10).div(6);
     for(uint i = 0; i < partners.length; i++){
       uint256 amount = percentages[partners[i]].mul(totalTokens).div(100);
       _deliverTokens(partners[i], amount);
@@ -201,10 +201,10 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    */
   function finalizePresale() atStage(Stages.PRESALE) internal{
     presale_EndDate = now;
-    publicSale_StartDate = presale_EndDate + 10 days;
-    publicSale_EndDate = publicSale_StartDate + 30 days;
-    publicSale_TokenCap = publicSale_TokenCap.add(presale_TokenCap.sub(presale_TokesSold));
-    publicSale_Cap = publicSale_Cap.add(presale_Cap.sub(weiRaised.sub(changeDue)));
+    mainSale_StartDate = presale_EndDate + 10 days;
+    mainSale_EndDate = mainSale_StartDate + 30 days;
+    mainSale_TokenCap = mainSale_TokenCap.add(presale_TokenCap.sub(presale_TokesSold));
+    mainSale_Cap = mainSale_Cap.add(presale_Cap.sub(weiRaised.sub(changeDue)));
     currentStage = Stages.BREAK;
   }
 
@@ -212,8 +212,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    * @dev Finalizes the public sale
    *
    */
-  function finalizeSale() atStage(Stages.PUBLICSALE) internal {
-    publicSale_EndDate = now;
+  function finalizeSale() atStage(Stages.MAINSALE) internal {
+    mainSale_EndDate = now;
     require(SolidToken(token).setTransferEnablingDate(now + 182 days));
     currentStage = Stages.FINALAIZED;
   }
@@ -273,8 +273,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
       if(capReached)
         finalizePresale();
     } else{
-      publicSale_TokesSold = publicSale_TokesSold.add(tokenAmount);
-      publicSale_WeiRaised = publicSale_WeiRaised.add(_weiAmount.sub(changeDue));
+      mainSale_TokesSold = mainSale_TokesSold.add(tokenAmount);
+      mainSale_WeiRaised = mainSale_WeiRaised.add(_weiAmount.sub(changeDue));
       if(capReached)
         finalizeSale();
     }
