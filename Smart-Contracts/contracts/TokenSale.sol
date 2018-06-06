@@ -11,15 +11,6 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   //TO BE REMOVED
   event DEBUG(uint256 value);
 
-  enum Stages{
-    SETUP,
-    READY,
-    PRESALE,
-    BREAK,
-    PUBLICSALE,
-    FINALAIZED
-  }
-
   //Global Variables
   mapping(address => uint) public contributions;
   Stages public currentStage;
@@ -43,24 +34,36 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   uint256 public publicSale_WeiRaised;
 
 
-  //TEMP VARIABLE - USED TO NOT OVERRIDE MORE OZ FUNCTIONS
+  //TEMPORARY VARIABLES - USED TO AVOID OVERRIDING MORE OPEN ZEPPELING FUNCTIONS
   uint256 changeDue;
   bool capReached;
 
-  constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 presaleCap, uint256 publicCap) public Crowdsale(_rate,_wallet,_token) {
-    presale_TokenCap = 1600000 ether;
-    publicSale_TokenCap = 800000 ether;
-    presale_Cap = presaleCap;
-    publicSale_Cap = publicCap;
-    minimumContribution = 0.5 ether;
-    maximumContribution = 100 ether;
+  enum Stages{
+    SETUP,
+    READY,
+    PRESALE,
+    BREAK,
+    PUBLICSALE,
+    FINALAIZED
   }
 
+
+
+  /**
+      MODIFIERS
+  **/
+
+  /**
+    @dev Garantee that contract has the desired satge
+  **/
   modifier atStage(Stages _currentStage){
-    require(currentStage == _currentStage);
-    _;
+      require(currentStage == _currentStage);
+      _;
   }
-
+  /**
+    @dev Execute automatically transitions between different Stages
+    based on time only
+  **/
   modifier timedTransition(){
     if(currentStage == Stages.READY && now >= presale_StartDate){
       currentStage = Stages.PRESALE;
@@ -77,6 +80,56 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     _;
   }
 
+
+  /**
+      CONSTRUCTOR
+  **/
+
+  /**
+    @param _rate The exchange rate(multiplied by 1000) of tokens to eth(1 token = rate * ETH)
+    @param _wallet The address that recieves _forwardFunds
+    @param _token A token contract. Will be overriden later(needed fot OZ constructor)
+    @param _presaleCap the ETH cap of the presale.
+    @param _publicCap the ETH cap of the public sale.
+  **/
+  constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 presaleCap, uint256 publicCap) public Crowdsale(_rate,_wallet,_token) {
+    //TODO: Enforce a tight relation between these 4 vars
+    presale_TokenCap = 1600000 ether;
+    publicSale_TokenCap = 800000 ether;
+    presale_Cap = presaleCap;
+    publicSale_Cap = publicCap;
+
+    minimumContribution = 0.5 ether;
+    maximumContribution = 100 ether;
+  }
+
+
+  /**
+      SETUP RELATED FUNCTIONS
+  **/
+
+  /**
+   * @dev Sets the initial date and token.
+   * @param _presaleSartDate A timestamp representing the start of the presale
+    @param _token  The address of the deployed SolidToken
+   */
+  function setupSale(uint256 initialDate, address tokenAddress) onlyOwner atStage(Stages.SETUP) public {
+    presale_StartDate = _presaleSartDate;
+    presale_EndDate = presale_StartDate + 90 days;
+    token = ERC20(_token);
+    require(SolidToken(_token).owner() == address(this), "Token has the wrong ownership");
+    currentStage = Stages.READY;
+  }
+
+
+  /**
+      STAGE RELATED FUNCTIONS
+  **/
+
+  /**
+    @dev Executes the timed transition and check for edge cases. Needed for when a stage transition makes
+    the transaction fail.
+  **/
   function updateStage() timedTransition {
     //Satge Conversions not covered by timed Transitions
     if(currentStage == Stages.PRESALE){
@@ -89,31 +142,11 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     }
   }
 
-  function setupSale(uint256 initialDate, address tokenAddress) onlyOwner atStage(Stages.SETUP) public {
-    setUpToken(tokenAddress);
-    setDates(initialDate);
-    currentStage = Stages.READY;
-  }
-
-  /**
-   * @dev Sets tha dates and durations of the different sale stages
-   * @param _presaleSartDate A timestamp representing the start of the presale
-   */
-  function setDates(uint256 _presaleSartDate) onlyOwner atStage(Stages.SETUP) internal {
-    presale_StartDate = _presaleSartDate;
-    presale_EndDate = presale_StartDate + 90 days;
-  }
-
-  function setUpToken(address _token) onlyOwner atStage(Stages.SETUP) internal {
-    token = ERC20(_token);
-    require(SolidToken(_token).owner() == address(this), "Issue with token setup");
-  }
-
   /**
    * @dev Returns de ETH cap of the current currentStage
    * @return uint256 representing the cap
    */
-  function getCurrentCap() public returns(uint256 cap){
+  function getCurrentCap() public  view returns(uint256 cap){
     cap = presale_Cap;
     if(currentStage == Stages.PUBLICSALE){
       cap = publicSale_Cap;
@@ -122,31 +155,50 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
 
   /**
    * @dev Returns de ETH cap of the current currentStage
-   * @return uint256 representing the cap
+   * @return uint256 representing the raised amount in the stage
    */
-  function getRaisedForCurrentStage() public returns(uint256 raised){
+  function getRaisedForCurrentStage() public view returns(uint256 raised){
     raised = presale_WeiRaised;
     if(currentStage == Stages.PUBLICSALE)
       raised = publicSale_WeiRaised;
   }
 
+  /**
+   * @dev Returns the sale status.
+   * @return True if open, false if closed
+   */
   function saleOpen() public timedTransition returns(bool open) {
     open = ((now >= presale_StartDate && now <= presale_EndDate) ||
            (now >= publicSale_StartDate && now <= publicSale_EndDate)) &&
            (currentStage == Stages.PRESALE || currentStage == Stages.PUBLICSALE);
   }
 
+
+
+  /**
+    FINALIZATION RELATES FUNCTIONS
+  **/
+
+  /**
+   * @dev Checks and distribute the remaining tokens. Finish minting afterwards
+   * @return uint256 representing the cap
+   */
   function distributeTokens() public onlyOwner atStage(Stages.FINALAIZED) {
+    require(!distributed);
     require(checkPercentages(40));//Magic number -> Only 60% will be sold, therefore all other % must be less than 40%
     uint256 totalTokens = (presale_TokesSold.add(publicSale_TokesSold)).mul(10).div(6);
     for(uint i = 0; i < partners.length; i++){
       uint256 amount = percentages[partners[i]].mul(totalTokens).div(100);
-      DEBUG(i);
-      DEBUG(amount);
       _deliverTokens(partners[i], amount);
     }
+    require(SolidToken(token).finishMinting());
+    distributed = true;
   }
 
+  /**
+   * @dev Finalizes the presale and sets up the break and public sales
+   *
+   */
   function finalizePresale() atStage(Stages.PRESALE) internal{
     presale_EndDate = now;
     publicSale_StartDate = presale_EndDate + 10 days;
@@ -156,6 +208,10 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     currentStage = Stages.BREAK;
   }
 
+  /**
+   * @dev Finalizes the public sale
+   *
+   */
   function finalizeSale() atStage(Stages.PUBLICSALE) internal {
     publicSale_EndDate = now;
     require(SolidToken(token).setTransferEnablingDate(now + 182 days));
@@ -163,7 +219,9 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   }
 
 
-  //OVERRIDES
+  /**
+      OPEN ZEPPELIN OVERRIDES
+  **/
 
   /**
    * @dev Validation of an incoming purchase. Use require statements to revert state when conditions are not met. Use super to concatenate validations.
@@ -245,7 +303,4 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     wallet.transfer(msg.value.sub(changeDue));
   }
 
-
 }
-// Rate, wallet, token, presalecap, publicSaleCap
-// 15, "0xca35b7d915458ef540ade6068dfe2f44e8fa733c", "0xbbf289d846208c16edc8474705c748aff07732db", "19200000000000000000", "120000000000000000"
