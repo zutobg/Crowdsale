@@ -44,7 +44,7 @@ Afterwards tokens will be minted to:
 * Team Fund (20% of total supply)
 Vesting: 1 year cliff, 3 year total.
 * Community & Audit Training Fund (10% of total supply)
-* Economics Reserve (5% of total supply)
+* Liquids Reserve (5% of total supply)
 * Airdrops (0.5% of total supply)
 
 
@@ -57,18 +57,18 @@ __Edge Cases:__ Last transaction for either of the sales should get refunded wha
 The sale is based on the Open Zeppelin framework, with a few additions, the biggest one being stages, because there will be multiple phases.
 
 1) Sale is deployed with `SETUP`.
-2) After configuration the sale move to `READY`.
+2) After configuration the sale moves to `READY`.
 3) When the start date arrives the sale should go to `PRESALE`(either by calling `updateStage` or making a purchase), since it's resolved in `timedTransition`
-3) The `PRESALE` stage ends when either the cap is reached or the endTime arrives.
-  3.a) If the cap is reached the stage will move during the last transaction in the `_postValidatePurchase`
-  3.b) If the time is reached, the transition must happen in `updateStage`, since making a purchase will revert the stage.
-  3.c) If the sale enter the state where the cap haven't been reached but the remaining amount is less than the minimum purchase, the transition should happen in `updateStage`;
+4) The `PRESALE` stage ends when either the cap is reached or the endTime arrives.
+  * If the cap is reached the stage will move during the last transaction in the `_postValidatePurchase`
+  * If the time is reached, the transition must happen in `updateStage`, since making a purchase will revert the stage.
+  * If the sale enter the state where the cap haven't been reached but the remaining amount is less than the minimum purchase, the transition should happen in `updateStage`;
 4) the `BREAK` stage should last 10 days(counting from the finalization).
 5) The `MAINSALE` should start when the time arrives, either by calling `updateStage` or making a purchase.
-6) The `MAINSALE` stage ends when either the cap is reached or the endTime arrives.
-  3.a) If the cap is reached the stage will move during the last transaction in the `_postValidatePurchase`
-  3.b) If the time is reached, the transition must happen in `updateStage`, since making a purchase will revert the stage.
-  3.c) If the sale enter the state where the cap haven't been reached but the remaining amount is less than the minimum purchase, the transition should happen in `updateStage`;
+7) The `MAINSALE` stage ends when either the cap is reached or the endTime arrives.
+  * If the cap is reached the stage will move during the last transaction in the `_postValidatePurchase`
+  * If the time is reached, the transition must happen in `updateStage`, since making a purchase will revert the stage.
+  * If the sale enter the state where the cap haven't been reached but the remaining amount is less than the minimum purchase, the transition should happen in `updateStage`;
 
 
 The other meaningful addition is the `changeDue` and `capReached` variables.
@@ -78,16 +78,15 @@ The change is needed when a purchase is overpaid, either when a buyer sends more
 All the sale parameters should be increased considering only the accepted amount.
 
 Lastly, there's the added mechanism for minting and distributing the non-sale tokens.
-The values will be harcoded in the `Distributable.sol` with percentages. When the sale is finalized the tokens will be distributed following the rule:
+The values will be harcoded in the `Distributable.sol` with percentages. When the sale is finalized the tokens will be distributed following the rules:
 
 * The amount sold in both sale stages will be 60% of the total Tokens
 * The other addresses percentages must account up to 40%
 * If a give address has rights to 5%, it means that it will receive 5% of the total tokens(even if not all of them are minted yet);
 
-The `distributeTokens` functions one of the few owner restricted function(although it doesn't need to be);
 
 ##### Note on units
-Given the solidity restriction to floating point numbers, some variable are considered differently.
+Given the solidity restriction to floating point numbers, some variables are considered differently.
 * The `rate` will be divided by `1000`. A rate of `15` actually means `0.015`. This is considered in the contracts
 * The `percentages` will be divided by `10`. A percentage of `14` means `1.4%`   
 
