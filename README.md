@@ -82,7 +82,7 @@ The values will be harcoded in the `Distributable.sol` with percentages. When th
 
 * The amount sold in both sale stages will be 60% of the total Tokens
 * The other addresses percentages must account up to 40%
-* If a give address has rights to 5%, it means that it will receive 5% of the total tokens(even if not all of them are minted yet);
+* If a given address has rights to 5%, it means that it will receive 5% of the total tokens(even if not all of them are minted yet);
 
 
 ##### Note on units
