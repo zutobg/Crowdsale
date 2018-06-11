@@ -14,15 +14,15 @@ contract Distributable {
 
   constructor(){
     //Not actual percentages
-    percentages[0x01] = 10;
-    percentages[0x02] = 10;
-    percentages[0x03] = 10;
-    percentages[0x04] = 10;
-    percentages[0x05] = 10;
-    percentages[0x06] = 10;
-    percentages[0x07] = 10;
-    percentages[0x08] = 10;
-    percentages[0x09] = 10;
+    percentages[0x01] = 1;
+    percentages[0x02] = 2;
+    percentages[0x03] = 3;
+    percentages[0x04] = 4;
+    percentages[0x05] = 5;
+    percentages[0x06] = 6;
+    percentages[0x07] = 7;
+    percentages[0x08] = 8;
+    percentages[0x09] = 9;
     percentages[0x10] = 10;
   }
 

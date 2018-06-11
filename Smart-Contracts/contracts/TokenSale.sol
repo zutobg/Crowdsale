@@ -113,7 +113,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     presale_StartDate = initialDate;
     presale_EndDate = presale_StartDate + 90 days;
     token = ERC20(tokenAddress);
-    require(SolidToken(tokenAddress).totalSupply() == 0, "Some token have already been distributed");
+    require(SolidToken(tokenAddress).totalSupply() == 0, "Tokens have already been distributed");
     require(SolidToken(tokenAddress).owner() == address(this), "Token has the wrong ownership");
     currentStage = Stages.READY;
   }

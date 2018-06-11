@@ -162,15 +162,64 @@ contract('TokenSale', (accounts) => {
       await sale.distributeTokens();
       for(var i = 0; i < partAdd.length; i++){
         let bal = await token.balanceOf(partAdd[i]);
-        assert.equal(bal.toNumber() / totalTokens , 0.01);
+        assert.equal((bal.toNumber() / totalTokens).toFixed(3) , (i + 1) / 1000);
       }
     })
+
+    it("Correctly sets the token state", async() => {
+      let minting = await token.mintingFinished();
+      assert.isTrue(minting);
+    })
+
+    it("Accounts correctly for tokens sold", async() => {
+      let raised_pre = await sale.presale_WeiRaised();
+      let raised_main = await sale.mainSale_WeiRaised();
+      let raised = await sale.weiRaised();
+
+      assert.equal(raised_pre.toNumber() + raised_main.toNumber(), raised.toNumber())
+    })
+
+  })
+
+  context("Maintaing sale state", async() => {
+
+    const buyer = accounts[8];
+    const buyer2 = accounts[3];
+    const buyer3 = accounts[6];
+    const value = ether(5);
+    let date;
+
+    before(async () =>{
+    let initialDate = await latestTime();
+    const values = await deployAndSetup(rate, wallet, presaleCap, mainSaleCap, initialDate);
+    token = values[0];
+    sale = values[1];
+    date = values[2];
+    await sale.addManyToWhitelist(accounts);
+    })
+
+    it("Correctly accounts for purchases made from the other address", async() => {
+      await sale.buyTokens(buyer, {from: buyer, value: value});
+      let tokenBal = await token.balanceOf(buyer);
+      let contributions = await sale.contributions(buyer);
+      assert.equal(tokenBal.toNumber(), value / 0.012)
+      assert.equal(contributions.toNumber(), value);
+    })
+
+    it("Correctly accounts for purchases made from same addresses", async() => {
+      await sale.buyTokens(buyer2, {value: value});
+      let tokenBal = await token.balanceOf(buyer2);
+      let contributions = await sale.contributions(buyer2);
+      assert.equal(tokenBal.toNumber(), value / 0.012)
+      assert.equal(contributions.toNumber(), value)
+    })
+
 
   })
 
 
 
-  context("Stage Transitions", async() => {
+  context("Stage Transitions - Reaching Cap", async() => {
 
     const newPresaleCap = presaleCap / 1000;
     const newPublicCap = mainSaleCap / 1000;
@@ -191,16 +240,25 @@ contract('TokenSale', (accounts) => {
       assert.equal(stage.toNumber(), 0);
     })
 
+    it("Fails to process purchase in SETUP stage", async () => {
+      await assertRevert(sale.buyTokens(buyer, {value: ether(15)}));
+    })
+
     it("Fails to update stage until setup is done", async () => {
       await sale.updateStage();
       let stage = await sale.currentStage();
       assert.equal(stage.toNumber(), 0);
     })
 
-    it("Update Stage after setup", async () => {
+    it("Update to READY after setup", async () => {
       await sale.setupSale(date + duration.days(1), token.address);
       let stage = await sale.currentStage();
       assert.equal(stage.toNumber(), 1);
+    })
+
+
+    it("Fails to process purchase in READY stage", async () => {
+      await assertRevert(sale.buyTokens(buyer, {value: ether(15)}));
     })
 
     it("Fails to enter PRESALE until initial time reaches", async () => {
@@ -223,6 +281,11 @@ contract('TokenSale', (accounts) => {
       assert.equal(stage.toNumber(), 3);
     })
 
+
+    it("Fails to process purchase in BREAK stage", async () => {
+      await assertRevert(sale.buyTokens(buyer, {value: ether(15)}));
+    })
+
     it("Fails to enter MAINSALE until initial time reaches", async () => {
       await sale.updateStage();
       let stage = await sale.currentStage();
@@ -241,5 +304,11 @@ contract('TokenSale', (accounts) => {
       let stage = await sale.currentStage();
       assert.equal(stage.toNumber(), 5);
     })
+
+    it("Fails to process purchase in FINALAIZED stage", async () => {
+      await assertRevert(sale.buyTokens(buyer, {value: ether(15)}));
+    })
   })
+
+
 })

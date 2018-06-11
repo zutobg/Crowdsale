@@ -44,7 +44,7 @@ Afterwards tokens will be minted to:
 * Team Fund (20% of total supply)
 Vesting: 1 year cliff, 3 year total.
 * Community & Audit Training Fund (10% of total supply)
-* Liquids Reserve (5% of total supply)
+* Liquid Reserve (5% of total supply)
 * Airdrops (0.5% of total supply)
 
 
