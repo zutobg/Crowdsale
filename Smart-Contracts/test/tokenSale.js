@@ -89,7 +89,7 @@ contract('TokenSale', (accounts) => {
 
     it("Rejects values below the minimum", async() => {
       const belowMinimum = ether(0.1);
-      await assertRevert(sale.buyTokens(buyer, {value: belowMinimum}));
+      await assertRevert(sale.buyTokens(buyer2, {value: belowMinimum}));
     })
 
     it("Give changes correctly", async() => {
@@ -132,7 +132,7 @@ contract('TokenSale', (accounts) => {
       let pubTkCap = await sale.mainSale_TokenCap();
       let pubCap = await sale.mainSale_Cap();
 
-      assert.equal(pubTkCap.toNumber(), ether(800000).toNumber() + preTkCap.toNumber() - preSold.toNumber());
+      assert.equal(pubTkCap.toNumber().toFixed(10), (ether(800000).toNumber() + preTkCap.toNumber() - preSold.toNumber()).toFixed(10));
       assert.equal(pubCap.toNumber(), ether(12000).toNumber() + preCap.toNumber() - preRaised.toNumber());
     })
 

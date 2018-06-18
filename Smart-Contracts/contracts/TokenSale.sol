@@ -11,22 +11,30 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   //Global Variables
   mapping(address => uint) public contributions;
   Stages public currentStage;
-  uint256 public minimumContribution;
-  uint256 public maximumContribution;
+
+  //CONSTANTS
+  uint256 constant MINIMUM_CONTRIBUTION = 0.5 ether;
+  uint256 constant MAXIMUM_CONTRIBUTION = 100 ether;
+  uint256 constant BREAK_DURATION = 10 days;
+  uint256 constant PRESALE_MAX_DURATION = 90 days;
+  uint256 constant MAINSALE_MAX_DURATION = 30 days;
+  uint256 constant TOKEN_RELEASE_DELAY = 182 days;
+
 
   //PRESALE VARIABLES
+  uint256 public presale_Cap = 19200 ether;
+  uint256 public presale_TokenCap = 1600000 ether;
+
   uint256 public presale_StartDate;
   uint256 public presale_EndDate;
-  uint256 public presale_Cap;
-  uint256 public presale_TokenCap;
   uint256 public presale_TokesSold;
   uint256 public presale_WeiRaised;
 
   //MAINSALE VARIABLES
+  uint256 public mainSale_Cap = 12000 ether;
+  uint256 public mainSale_TokenCap = 800000 ether;
   uint256 public mainSale_StartDate;
   uint256 public mainSale_EndDate;
-  uint256 public mainSale_Cap;
-  uint256 public mainSale_TokenCap;
   uint256 public mainSale_TokesSold;
   uint256 public mainSale_WeiRaised;
 
@@ -41,7 +49,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     PRESALE,
     BREAK,
     MAINSALE,
-    FINALAIZED
+    FINALIZED
   }
 
 
@@ -68,7 +76,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     if(currentStage == Stages.PRESALE && now > presale_EndDate){
       finalizePresale();
     }
-    if(currentStage == Stages.BREAK && now > presale_EndDate + 10 days){
+    if(currentStage == Stages.BREAK && now > presale_EndDate + BREAK_DURATION){
       currentStage = Stages.MAINSALE;
     }
     if(currentStage == Stages.MAINSALE && now > mainSale_EndDate){
@@ -86,17 +94,12 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     @param _rate The exchange rate(multiplied by 1000) of tokens to eth(1 token = rate * ETH)
     @param _wallet The address that recieves _forwardFunds
     @param _token A token contract. Will be overriden later(needed fot OZ constructor)
-    @param _presaleCap the ETH cap of the presale.
-    @param _mainCap the ETH cap of the public sale.
   **/
-  constructor(uint256 _rate, address _wallet, ERC20 _token, uint256 _presaleCap, uint256 _mainCap) public Crowdsale(_rate,_wallet,_token) {
-    presale_TokenCap = _presaleCap.div(rate).mul(1250); // shorthand for (cap / rate * 1000) * 1.25
+  constructor(uint256 _rate, address _wallet, ERC20 _token) public Crowdsale(_rate,_wallet,_token) {
+    /* presale_TokenCap = _presaleCap.div(rate).mul(1250); // shorthand for (cap / rate * 1000) * 1.25
     mainSale_TokenCap = _mainCap.div(rate).mul(1000);
     presale_Cap = _presaleCap;
-    mainSale_Cap = _mainCap;
-
-    minimumContribution = 0.5 ether;
-    maximumContribution = 100 ether;
+    mainSale_Cap = _mainCap; */
   }
 
 
@@ -111,7 +114,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    */
   function setupSale(uint256 initialDate, address tokenAddress) onlyOwner atStage(Stages.SETUP) public {
     presale_StartDate = initialDate;
-    presale_EndDate = presale_StartDate + 90 days;
+    presale_EndDate = presale_StartDate + PRESALE_MAX_DURATION;
     token = ERC20(tokenAddress);
     require(SolidToken(tokenAddress).totalSupply() == 0, "Tokens have already been distributed");
     require(SolidToken(tokenAddress).owner() == address(this), "Token has the wrong ownership");
@@ -127,17 +130,17 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     @dev Executes the timed transition and check for edge cases. Needed for when a stage transition makes
     the transaction fail.
   **/
-  function updateStage() timedTransition {
+  /* function updateStage() timedTransition {
     //Satge Conversions not covered by timed Transitions
     if(currentStage == Stages.PRESALE){
-      if(presale_Cap.sub(weiRaised) < minimumContribution)
+      if(presale_Cap.sub(weiRaised) < MINIMUM_CONTRIBUTION)
         finalizePresale();
     }
     if(currentStage == Stages.MAINSALE){
-      if((mainSale_Cap.add(presale_Cap)).sub(weiRaised) < minimumContribution)
-        currentStage = Stages.FINALAIZED;
+      if((mainSale_Cap.add(presale_Cap)).sub(weiRaised) < MINIMUM_CONTRIBUTION)
+        finalizeSale();
     }
-  }
+  } */
 
   /**
    * @dev Returns de ETH cap of the current currentStage
@@ -164,7 +167,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    * @dev Returns the sale status.
    * @return True if open, false if closed
    */
-  function saleOpen() public timedTransition returns(bool open) {
+  function saleOpen() public timedTransition whenNotPaused returns(bool open) {
     open = ((now >= presale_StartDate && now <= presale_EndDate) ||
            (now >= mainSale_StartDate && now <= mainSale_EndDate)) &&
            (currentStage == Stages.PRESALE || currentStage == Stages.MAINSALE);
@@ -180,7 +183,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    * @dev Checks and distribute the remaining tokens. Finish minting afterwards
    * @return uint256 representing the cap
    */
-  function distributeTokens() public onlyOwner atStage(Stages.FINALAIZED) {
+  function distributeTokens() public onlyOwner atStage(Stages.FINALIZED) {
     require(!distributed);
     require(checkPercentages(40));//Magic number -> Only 60% will be sold, therefore all other % must be less than 40%
     uint256 totalTokens = (presale_TokesSold.add(mainSale_TokesSold)).mul(10).div(6);
@@ -198,8 +201,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    */
   function finalizePresale() atStage(Stages.PRESALE) internal{
     presale_EndDate = now;
-    mainSale_StartDate = presale_EndDate + 10 days;
-    mainSale_EndDate = mainSale_StartDate + 30 days;
+    mainSale_StartDate = presale_EndDate + BREAK_DURATION;
+    mainSale_EndDate = mainSale_StartDate + MAINSALE_MAX_DURATION;
     mainSale_TokenCap = mainSale_TokenCap.add(presale_TokenCap.sub(presale_TokesSold));
     mainSale_Cap = mainSale_Cap.add(presale_Cap.sub(weiRaised.sub(changeDue)));
     currentStage = Stages.BREAK;
@@ -211,8 +214,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    */
   function finalizeSale() atStage(Stages.MAINSALE) internal {
     mainSale_EndDate = now;
-    require(SolidToken(token).setTransferEnablingDate(now + 182 days));
-    currentStage = Stages.FINALAIZED;
+    require(SolidToken(token).setTransferEnablingDate(now + TOKEN_RELEASE_DELAY));
+    currentStage = Stages.FINALIZED;
   }
 
 
@@ -226,22 +229,22 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    * @param _weiAmount Value in wei involved in the purchase
    */
   function _preValidatePurchase(address _beneficiary, uint256 _weiAmount) isWhitelisted(_beneficiary) internal {
+    require(_beneficiary == msg.sender);
     require(saleOpen(), "Sale is Closed");
-
     // Check for edge cases
     uint256 acceptedValue = _weiAmount;
-    if(contributions[_beneficiary].add(acceptedValue) > maximumContribution){
-      changeDue = (contributions[_beneficiary].add(acceptedValue)).sub(maximumContribution);
+    if(contributions[_beneficiary].add(acceptedValue) > MAXIMUM_CONTRIBUTION){
+      changeDue = (contributions[_beneficiary].add(acceptedValue)).sub(MAXIMUM_CONTRIBUTION);
       acceptedValue = acceptedValue.sub(changeDue);
     }
     uint256 currentCap = getCurrentCap();
     uint256 raised = getRaisedForCurrentStage();
-    if(raised.add(acceptedValue) > currentCap){
+    if(raised.add(acceptedValue) >= currentCap){
       changeDue = changeDue.add(raised.add(acceptedValue).sub(currentCap));
       acceptedValue = _weiAmount.sub(changeDue);
       capReached = true;
     }
-    require(acceptedValue >= minimumContribution, "Contribution below minimum");
+    require(contributions[_beneficiary].add(acceptedValue) >= MINIMUM_CONTRIBUTION || raised.add(acceptedValue) > currentCap.sub(MINIMUM_CONTRIBUTION) , "Contribution below minimum");
   }
 
   /**
@@ -262,26 +265,15 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    * @param _weiAmount Value in wei involved in the purchase
    */
   function _postValidatePurchase(address _beneficiary, uint256 _weiAmount) internal {
-    uint256 tokenAmount = _getTokenAmount(_weiAmount);
+    if(currentStage == Stages.PRESALE && capReached) finalizePresale();
+    if(currentStage == Stages.MAINSALE && capReached) finalizeSale();
 
-    if(currentStage == Stages.PRESALE){
-      presale_TokesSold = presale_TokesSold.add(tokenAmount);
-      presale_WeiRaised = presale_WeiRaised.add(_weiAmount.sub(changeDue));
-      if(capReached)
-        finalizePresale();
-    } else{
-      mainSale_TokesSold = mainSale_TokesSold.add(tokenAmount);
-      mainSale_WeiRaised = mainSale_WeiRaised.add(_weiAmount.sub(changeDue));
-      if(capReached)
-        finalizeSale();
-    }
+    _beneficiary.transfer(changeDue);
 
-    //Triggers for reaching cap
-    weiRaised = weiRaised.sub(changeDue);
-    uint256 change = changeDue;
+    //Cleanup temp
     changeDue = 0;
     capReached = false;
-    _beneficiary.transfer(change);
+
   }
 
   /**
@@ -290,7 +282,17 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    * @param _weiAmount Value in wei involved in the purchase
    */
   function _updatePurchasingState(address _beneficiary, uint256 _weiAmount) internal {
+    uint256 tokenAmount = _getTokenAmount(_weiAmount);
+    if(currentStage == Stages.PRESALE){
+      presale_TokesSold = presale_TokesSold.add(tokenAmount);
+      presale_WeiRaised = presale_WeiRaised.add(_weiAmount.sub(changeDue));
+    } else {
+      mainSale_TokesSold = mainSale_TokesSold.add(tokenAmount);
+      mainSale_WeiRaised = mainSale_WeiRaised.add(_weiAmount.sub(changeDue));
+    }
+
     contributions[_beneficiary] = contributions[_beneficiary].add(_weiAmount).sub(changeDue);
+    weiRaised = weiRaised.sub(changeDue);
   }
 
   /**
