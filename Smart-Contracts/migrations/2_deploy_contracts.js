@@ -17,7 +17,7 @@ module.exports = function (deployer, network, accounts) {
   .then((instance) => {
     console.log(instance.address);
     token = instance;
-    return deployer.deploy(TokenSale,rate,wallet, instance.address,presaleCap,mainSaleCap);
+    return deployer.deploy(TokenSale,rate,wallet, instance.address);
   })
   .then(instance => {
     tokenSale = instance;

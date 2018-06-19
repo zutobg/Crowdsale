@@ -6,10 +6,11 @@ import ether from './helpers/ether.js'
 
 const SolidToken = artifacts.require('../SolidToken.sol');
 const TokenSale = artifacts.require('../TokenSale.sol');
+const TokenSaleMock = artifacts.require('TokenSaleMock.sol');
 
 const deployAndSetup = async (rate, wallet, presaleCap, mainSaleCap, initialDate)=> {
   let token = await SolidToken.new();
-  let sale = await TokenSale.new(rate, wallet, token.address, presaleCap, mainSaleCap);
+  let sale = await TokenSaleMock.new(rate, wallet, token.address, presaleCap, mainSaleCap);
   await token.transferOwnership(sale.address);
   await sale.setupSale(initialDate, token.address);
 
@@ -80,7 +81,7 @@ contract('TokenSale', (accounts) => {
     })
 
     it("Accepts buys from whitelisted", async() => {
-      await sale.buyTokens(buyer, {value: value});
+      await sale.buyTokens(buyer, {from: buyer, value: value});
       let tokenBal = await token.balanceOf(buyer);
       let raised = await sale.weiRaised();
       assert.equal(tokenBal.toNumber(), value / 0.012)
@@ -89,7 +90,7 @@ contract('TokenSale', (accounts) => {
 
     it("Rejects values below the minimum", async() => {
       const belowMinimum = ether(0.1);
-      await assertRevert(sale.buyTokens(buyer2, {value: belowMinimum}));
+      await assertRevert(sale.buyTokens(buyer2, {from: buyer2, value: belowMinimum}));
     })
 
     it("Give changes correctly", async() => {
@@ -122,7 +123,7 @@ contract('TokenSale', (accounts) => {
 
     it("Finalizes correctly the presale", async()=>{
       await increaseTimeTo(date + duration.days(91));
-      await sale.updateStage();
+      await sale.saleOpen();
       let pEndDate = await sale.presale_EndDate();
       let pbStarDate = await sale.mainSale_StartDate();
       let preSold = await sale.presale_TokesSold();
@@ -138,7 +139,7 @@ contract('TokenSale', (accounts) => {
 
     it("Gives correct amount of tokens for MAINSALE", async ()=>{
       await increaseTimeTo(date + duration.days(102));
-      await sale.buyTokens(buyer3, {value: value});
+      await sale.buyTokens(buyer3, {value: value, from: buyer3});
       let cont1 = await sale.contributions(buyer3);
       let bal1 = await token.balanceOf(buyer3);
       const discountRate = rate / 1000;
@@ -147,7 +148,7 @@ contract('TokenSale', (accounts) => {
 
     it("Finalizes correctly the PublicSale", async() => {
       await increaseTimeTo(date + duration.days(150));
-      await sale.updateStage();
+      await sale.saleOpen();
       let stage = await sale.currentStage();
       let dateToken = await token.transferEnablingDate();
       let now = await latestTime();
@@ -207,7 +208,7 @@ contract('TokenSale', (accounts) => {
     })
 
     it("Correctly accounts for purchases made from same addresses", async() => {
-      await sale.buyTokens(buyer2, {value: value});
+      await sale.buyTokens(buyer2, {from: buyer2, value: value});
       let tokenBal = await token.balanceOf(buyer2);
       let contributions = await sale.contributions(buyer2);
       assert.equal(tokenBal.toNumber(), value / 0.012)
@@ -230,7 +231,7 @@ contract('TokenSale', (accounts) => {
     before(async () => {
       date = await latestTime();
       token = await SolidToken.new();
-      sale = await TokenSale.new(rate, wallet, token.address, newPresaleCap, newPublicCap);
+      sale = await TokenSaleMock.new(rate, wallet, token.address, newPresaleCap, newPublicCap);
       await token.transferOwnership(sale.address);
       await sale.addToWhitelist(buyer);
     })
@@ -245,7 +246,7 @@ contract('TokenSale', (accounts) => {
     })
 
     it("Fails to update stage until setup is done", async () => {
-      await sale.updateStage();
+      await sale.saleOpen();
       let stage = await sale.currentStage();
       assert.equal(stage.toNumber(), 0);
     })
@@ -262,51 +263,51 @@ contract('TokenSale', (accounts) => {
     })
 
     it("Fails to enter PRESALE until initial time reaches", async () => {
-      await sale.updateStage();
+      await sale.saleOpen();
       let stage = await sale.currentStage();
       assert.equal(stage.toNumber(), 1);
     })
 
     it("Updates stages to PRESALE when inital time arrives", async () => {
       await increaseTimeTo(date + duration.days(2));
-      await sale.updateStage();
+      await sale.saleOpen();
       let stage = await sale.currentStage();
       assert.equal(stage.toNumber(), 2);
     })
 
     it("It automatically updates do BREAK if presale cap is reached", async () => {
-      await sale.buyTokens(buyer, {value: ether(15)});
-      await sale.buyTokens(buyer, {value: ether(4.3)});
+      await sale.buyTokens(buyer, {from: buyer, value: ether(15)});
+      await sale.buyTokens(buyer, {from: buyer, value: ether(4.3)});
       let stage = await sale.currentStage();
       assert.equal(stage.toNumber(), 3);
     })
 
 
     it("Fails to process purchase in BREAK stage", async () => {
-      await assertRevert(sale.buyTokens(buyer, {value: ether(15)}));
+      await assertRevert(sale.buyTokens(buyer, {from: buyer, value: ether(15)}));
     })
 
     it("Fails to enter MAINSALE until initial time reaches", async () => {
-      await sale.updateStage();
+      await sale.saleOpen();
       let stage = await sale.currentStage();
       assert.equal(stage.toNumber(), 3);
     })
 
     it("Updates stages to MAINSALE when inital time arrives", async () => {
       await increaseTimeTo(date + duration.days(15));
-      await sale.updateStage();
+      await sale.saleOpen();
       let stage = await sale.currentStage();
       assert.equal(stage.toNumber(), 4);
     })
 
     it("It automatically updates do FINALAIZED if public sale cap is reached", async () => {
-      await sale.buyTokens(buyer, {value: ether(14)});
+      await sale.buyTokens(buyer, {from: buyer, value: ether(14)});
       let stage = await sale.currentStage();
       assert.equal(stage.toNumber(), 5);
     })
 
     it("Fails to process purchase in FINALAIZED stage", async () => {
-      await assertRevert(sale.buyTokens(buyer, {value: ether(15)}));
+      await assertRevert(sale.buyTokens(buyer, {from:buyer ,value: ether(15)}));
     })
   })
 

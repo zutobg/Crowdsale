@@ -112,8 +112,10 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     presale_StartDate = initialDate;
     presale_EndDate = presale_StartDate + PRESALE_MAX_DURATION;
     token = ERC20(tokenAddress);
+
     require(SolidToken(tokenAddress).totalSupply() == 0, "Tokens have already been distributed");
     require(SolidToken(tokenAddress).owner() == address(this), "Token has the wrong ownership");
+
     currentStage = Stages.READY;
   }
 
@@ -252,8 +254,6 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     if(currentStage == Stages.PRESALE && capReached) finalizePresale();
     if(currentStage == Stages.MAINSALE && capReached) finalizeSale();
 
-    _beneficiary.transfer(changeDue);
-
     //Cleanup temp
     changeDue = 0;
     capReached = false;
@@ -285,6 +285,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    */
   function _forwardFunds() internal {
     wallet.transfer(msg.value.sub(changeDue));
+    msg.sender.transfer(changeDue); //Transfer change to _beneficiary
   }
 
 }
