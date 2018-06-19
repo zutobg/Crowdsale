@@ -1,6 +1,6 @@
 pragma solidity 0.4.24;
 
-import 'openzeppelin-solidity/contracts/token/ERC20/MintableToken.sol';
+import "openzeppelin-solidity/contracts/token/ERC20/MintableToken.sol";
 
 contract SolidToken is MintableToken {
 
@@ -8,8 +8,8 @@ contract SolidToken is MintableToken {
   string public constant symbol = "SOLID";
   uint8  public constant decimals = 18;
 
-  uint256 constant DECIMAL_PLACES = 10 ** 18;
-  uint256 constant supplyCap = 4000000 * DECIMAL_PLACES;
+  uint256 constant private DECIMAL_PLACES = 10 ** 18;
+  uint256 constant SUPPLY_CAP = 4000000 * DECIMAL_PLACES;
 
   bool public transfersEnabled = false;
   uint256 public transferEnablingDate;
@@ -44,7 +44,7 @@ contract SolidToken is MintableToken {
    * @return A boolean that indicates if the operation was successful.
    */
   function mint(address _to, uint256 _amount) onlyOwner canMint public returns (bool) {
-    require(totalSupply_.add(_amount) <= supplyCap);
+    require(totalSupply_.add(_amount) <= SUPPLY_CAP);
     require(super.mint(_to, _amount));
     return true;
   }

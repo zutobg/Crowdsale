@@ -1,15 +1,15 @@
 pragma solidity 0.4.24;
 
-import 'openzeppelin-solidity/contracts/crowdsale/emission/MintedCrowdsale.sol';
-import 'openzeppelin-solidity/contracts/crowdsale/validation/WhitelistedCrowdsale.sol';
-import './SolidToken.sol';
-import './Distributable.sol';
-import 'openzeppelin-solidity/contracts/lifecycle/Pausable.sol';
+import "openzeppelin-solidity/contracts/crowdsale/emission/MintedCrowdsale.sol";
+import "openzeppelin-solidity/contracts/crowdsale/validation/WhitelistedCrowdsale.sol";
+import "./SolidToken.sol";
+import "./Distributable.sol";
+import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 
 contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distributable {
 
   //Global Variables
-  mapping(address => uint) public contributions;
+  mapping(address => uint256) public contributions;
   Stages public currentStage;
 
   //CONSTANTS
@@ -19,7 +19,6 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   uint256 constant PRESALE_MAX_DURATION = 90 days;
   uint256 constant MAINSALE_MAX_DURATION = 30 days;
   uint256 constant TOKEN_RELEASE_DELAY = 182 days;
-
 
   //PRESALE VARIABLES
   uint256 public presale_Cap = 19200 ether;
@@ -33,6 +32,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   //MAINSALE VARIABLES
   uint256 public mainSale_Cap = 12000 ether;
   uint256 public mainSale_TokenCap = 800000 ether;
+
   uint256 public mainSale_StartDate;
   uint256 public mainSale_EndDate;
   uint256 public mainSale_TokesSold;
@@ -40,8 +40,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
 
 
   //TEMPORARY VARIABLES - USED TO AVOID OVERRIDING MORE OPEN ZEPPELING FUNCTIONS
-  uint256 changeDue;
-  bool capReached;
+  uint256 private changeDue;
+  bool private capReached;
 
   enum Stages{
     SETUP,
@@ -51,8 +51,6 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     MAINSALE,
     FINALIZED
   }
-
-
 
   /**
       MODIFIERS
@@ -65,6 +63,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
       require(currentStage == _currentStage);
       _;
   }
+
   /**
     @dev Execute automatically transitions between different Stages
     based on time only
@@ -96,10 +95,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     @param _token A token contract. Will be overriden later(needed fot OZ constructor)
   **/
   constructor(uint256 _rate, address _wallet, ERC20 _token) public Crowdsale(_rate,_wallet,_token) {
-    /* presale_TokenCap = _presaleCap.div(rate).mul(1250); // shorthand for (cap / rate * 1000) * 1.25
-    mainSale_TokenCap = _mainCap.div(rate).mul(1000);
-    presale_Cap = _presaleCap;
-    mainSale_Cap = _mainCap; */
+    currentStage = Stages.SETUP;
   }
 
 
@@ -127,26 +123,10 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   **/
 
   /**
-    @dev Executes the timed transition and check for edge cases. Needed for when a stage transition makes
-    the transaction fail.
-  **/
-  /* function updateStage() timedTransition {
-    //Satge Conversions not covered by timed Transitions
-    if(currentStage == Stages.PRESALE){
-      if(presale_Cap.sub(weiRaised) < MINIMUM_CONTRIBUTION)
-        finalizePresale();
-    }
-    if(currentStage == Stages.MAINSALE){
-      if((mainSale_Cap.add(presale_Cap)).sub(weiRaised) < MINIMUM_CONTRIBUTION)
-        finalizeSale();
-    }
-  } */
-
-  /**
    * @dev Returns de ETH cap of the current currentStage
    * @return uint256 representing the cap
    */
-  function getCurrentCap() public  view returns(uint256 cap){
+  function getCurrentCap() public view returns(uint256 cap){
     cap = presale_Cap;
     if(currentStage == Stages.MAINSALE){
       cap = mainSale_Cap;
@@ -186,13 +166,14 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   function distributeTokens() public onlyOwner atStage(Stages.FINALIZED) {
     require(!distributed);
     require(checkPercentages(40));//Magic number -> Only 60% will be sold, therefore all other % must be less than 40%
+    distributed = true;
+
     uint256 totalTokens = (presale_TokesSold.add(mainSale_TokesSold)).mul(10).div(6);
     for(uint i = 0; i < partners.length; i++){
       uint256 amount = percentages[partners[i]].mul(totalTokens).div(1000);
       _deliverTokens(partners[i], amount);
     }
     require(SolidToken(token).finishMinting());
-    distributed = true;
   }
 
   /**
@@ -231,14 +212,17 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   function _preValidatePurchase(address _beneficiary, uint256 _weiAmount) isWhitelisted(_beneficiary) internal {
     require(_beneficiary == msg.sender);
     require(saleOpen(), "Sale is Closed");
+
     // Check for edge cases
     uint256 acceptedValue = _weiAmount;
+    uint256 currentCap = getCurrentCap();
+    uint256 raised = getRaisedForCurrentStage();
+
     if(contributions[_beneficiary].add(acceptedValue) > MAXIMUM_CONTRIBUTION){
       changeDue = (contributions[_beneficiary].add(acceptedValue)).sub(MAXIMUM_CONTRIBUTION);
       acceptedValue = acceptedValue.sub(changeDue);
     }
-    uint256 currentCap = getCurrentCap();
-    uint256 raised = getRaisedForCurrentStage();
+
     if(raised.add(acceptedValue) >= currentCap){
       changeDue = changeDue.add(raised.add(acceptedValue).sub(currentCap));
       acceptedValue = _weiAmount.sub(changeDue);
@@ -283,6 +267,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    */
   function _updatePurchasingState(address _beneficiary, uint256 _weiAmount) internal {
     uint256 tokenAmount = _getTokenAmount(_weiAmount);
+
     if(currentStage == Stages.PRESALE){
       presale_TokesSold = presale_TokesSold.add(tokenAmount);
       presale_WeiRaised = presale_WeiRaised.add(_weiAmount.sub(changeDue));
