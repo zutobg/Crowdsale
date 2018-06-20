@@ -15,9 +15,9 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   //CONSTANTS
   uint256 constant MINIMUM_CONTRIBUTION = 0.5 ether;
   uint256 constant MAXIMUM_CONTRIBUTION = 100 ether;
-  uint256 constant BREAK_DURATION = 10 days;
-  uint256 constant PRESALE_MAX_DURATION = 90 days;
-  uint256 constant MAINSALE_MAX_DURATION = 30 days;
+  uint256 constant BREAK_DURATION = 0 ;
+  uint256 constant PRESALE_MAX_DURATION = 30 days;
+  uint256 constant MAINSALE_MAX_DURATION = 60 days;
   uint256 constant TOKEN_RELEASE_DELAY = 182 days;
   uint256 constant HUNDRED_PERCENT = 1000; //100% considering one extra decimal
 
