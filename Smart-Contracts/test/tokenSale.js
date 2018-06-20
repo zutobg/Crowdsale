@@ -8,9 +8,9 @@ const SolidToken = artifacts.require('../SolidToken.sol');
 const TokenSale = artifacts.require('../TokenSale.sol');
 const TokenSaleMock = artifacts.require('TokenSaleMock.sol');
 
-const deployAndSetup = async (rate, wallet, presaleCap, mainSaleCap, initialDate)=> {
+const deployAndSetup = async (rate, wallet, bonussaleCap, mainSaleCap, initialDate)=> {
   let token = await SolidToken.new();
-  let sale = await TokenSaleMock.new(rate, wallet, token.address, presaleCap, mainSaleCap);
+  let sale = await TokenSaleMock.new(rate, wallet, token.address, bonussaleCap, mainSaleCap);
   await token.transferOwnership(sale.address);
   await sale.setupSale(initialDate, token.address);
 
@@ -21,11 +21,11 @@ contract('TokenSale', (accounts) => {
 
   const rate = 15;
   const wallet = accounts[9];
-  const presaleCap = ether(19200);
-  const presaleTokenCap = ether(1600000);
+  const bonussaleCap = ether(19200);
+  const bonussaleTokenCap = ether(1600000);
   const mainSaleCap = ether(12000);
   const mainSaleTokenCap = ether(800000);
-  const presaleDuration = duration.days(30);
+  const bonussaleDuration = duration.days(30);
   const mainsaleDuration = duration.days(60);
   const breakDuration = duration.days(0);
 
@@ -37,7 +37,7 @@ contract('TokenSale', (accounts) => {
 
     before(async() =>{
       let now = await latestTime();
-      const values = await deployAndSetup(rate, wallet, presaleCap, mainSaleCap, now);
+      const values = await deployAndSetup(rate, wallet, bonussaleCap, mainSaleCap, now);
       token = values[0];
       sale = values[1];
       date = values[2];
@@ -45,18 +45,18 @@ contract('TokenSale', (accounts) => {
 
     it("Contract is deployed with correct state", async () => {
       let r = await sale.rate();
-      let prc = await sale.presale_Cap();
-      let prct = await sale.presale_TokenCap();
+      let prc = await sale.bonussale_Cap();
+      let prct = await sale.bonussale_TokenCap();
       let pbc = await sale.mainSale_Cap();
       let pbct = await sale.mainSale_TokenCap();
       let tk = await sale.token();
-      let sd = await sale.presale_StartDate();
-      let sed = await sale.presale_EndDate();
+      let sd = await sale.bonussale_StartDate();
+      let sed = await sale.bonussale_EndDate();
       let stage = await sale.currentStage();
 
       assert.equal(rate, r.toNumber());
-      assert.equal(presaleCap, prc.toNumber());
-      assert.equal(presaleTokenCap, prct.toNumber());
+      assert.equal(bonussaleCap, prc.toNumber());
+      assert.equal(bonussaleTokenCap, prct.toNumber());
       assert.equal(mainSaleCap, pbc.toNumber());
       assert.equal(mainSaleTokenCap, pbct.toNumber());
       assert.equal(token.address, tk);
@@ -77,7 +77,7 @@ contract('TokenSale', (accounts) => {
 
     before(async() =>{
       let initialDate = await latestTime();
-      const values = await deployAndSetup(rate, wallet, presaleCap, mainSaleCap, initialDate);
+      const values = await deployAndSetup(rate, wallet, bonussaleCap, mainSaleCap, initialDate);
       token = values[0];
       sale = values[1];
       date = values[2];
@@ -135,15 +135,15 @@ contract('TokenSale', (accounts) => {
       assert.equal(cont1.toNumber() + cont2.toNumber(), profit);
     })
 
-    it("Finalizes correctly the presale", async()=>{
-      await increaseTimeTo(date + presaleDuration + 10);
+    it("Finalizes correctly the bonussale", async()=>{
+      await increaseTimeTo(date + bonussaleDuration + 10);
       await sale.saleOpen();
-      //let pEndDate = await sale.presale_EndDate();
+      //let pEndDate = await sale.bonussale_EndDate();
       //let pbStarDate = await sale.mainSale_StartDate();
-      let preSold = await sale.presale_TokesSold();
-      let preTkCap = await sale.presale_TokenCap();
-      let preCap = await sale.presale_Cap();
-      let preRaised = await sale.presale_WeiRaised()
+      let preSold = await sale.bonussale_TokesSold();
+      let preTkCap = await sale.bonussale_TokenCap();
+      let preCap = await sale.bonussale_Cap();
+      let preRaised = await sale.bonussale_WeiRaised()
       let pubTkCap = await sale.mainSale_TokenCap();
       let pubCap = await sale.mainSale_Cap();
       let stage = await sale.currentStage();
@@ -189,7 +189,7 @@ contract('TokenSale', (accounts) => {
     })
 
     it("Accounts correctly for tokens sold", async() => {
-      let raised_pre = await sale.presale_WeiRaised();
+      let raised_pre = await sale.bonussale_WeiRaised();
       let raised_main = await sale.mainSale_WeiRaised();
       let raised = await sale.weiRaised();
 
@@ -208,7 +208,7 @@ contract('TokenSale', (accounts) => {
 
     before(async () =>{
     let initialDate = await latestTime();
-    const values = await deployAndSetup(rate, wallet, presaleCap, mainSaleCap, initialDate);
+    const values = await deployAndSetup(rate, wallet, bonussaleCap, mainSaleCap, initialDate);
     token = values[0];
     sale = values[1];
     date = values[2];
@@ -235,7 +235,7 @@ contract('TokenSale', (accounts) => {
   })
 
   context("Transactions in the cap gap", async() => {
-    const newPresaleCap = presaleCap / 1000;
+    const newPresaleCap = bonussaleCap / 1000;
     const newPublicCap = mainSaleCap / 1000;
     const buyer = accounts[7];
     const buyer2 = accounts[6];
@@ -272,7 +272,7 @@ contract('TokenSale', (accounts) => {
 
   context("Stage Transitions - Reaching Cap", async() => {
 
-    const newPresaleCap = presaleCap / 1000;
+    const newPresaleCap = bonussaleCap / 1000;
     const newPublicCap = mainSaleCap / 1000;
     const buyer = accounts[4];
 
@@ -325,7 +325,7 @@ contract('TokenSale', (accounts) => {
       assert.equal(stage.toNumber(), 2);
     })
 
-    it("It automatically updates do BREAK if presale cap is reached", async () => {
+    it("It automatically updates do BREAK if bonussale cap is reached", async () => {
       await sale.buyTokens(buyer, {from: buyer, value: ether(15)});
       await sale.buyTokens(buyer, {from: buyer, value: ether(4.3)});
       let stage = await sale.currentStage();
