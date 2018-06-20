@@ -26,12 +26,12 @@ contract Distributable {
     percentages[0x10] = 10;
   }
 
-  function checkPercentages(uint256 maxPercentage) public view returns(bool check){
+  /* function checkPercentages(uint256 maxPercentage) public view returns(bool check){
     uint256 counter = 0;
     for(uint i = 0; i < partners.length; i++){
       counter = counter.add(percentages[partners[i]]);
     }
     check = counter <= maxPercentage.mul(10);
-  }
+  } */
 
 }

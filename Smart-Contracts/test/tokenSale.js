@@ -68,6 +68,7 @@ contract('TokenSale', (accounts) => {
     const buyer = accounts[2];
     const buyer2 = accounts[5];
     const buyer3 = accounts[3];
+    const buyer4 = accounts[4];
     const value = ether(3);
     let date;
 
@@ -97,10 +98,20 @@ contract('TokenSale', (accounts) => {
       const aboveMax = ether(120);
       await web3.eth.sendTransaction({from: accounts[3], to: buyer2, value: ether(90)});
       let initialBal = await web3.eth.getBalance(buyer2);
-      await sale.buyTokens(buyer2, {from: buyer2, value: aboveMax});
+      let receipt = await sale.buyTokens(buyer2, {from: buyer2, value: aboveMax, gasPrice: 2});
       let endBalance = await web3.eth.getBalance(buyer2);
       let contribution = await sale.contributions(buyer2);
+      let gasUsed = receipt.receipt.gasUsed * 2;
+      assert.equal(initialBal.toNumber(), endBalance.toNumber() + ether(100).toNumber() + gasUsed);
       assert.equal(contribution.toNumber(), ether(100).toNumber());
+    })
+
+    it("Accepts below the minimum transaction if buyer has already purchased", async() => {
+      const belowMinimum = ether(0.3);
+      let initialCont = await sale.contributions(buyer);
+      await sale.buyTokens(buyer, {from: buyer, value: belowMinimum});
+      let endCont = await sale.contributions(buyer);
+      assert.equal(initialCont.toNumber(), endCont.toNumber() - belowMinimum);
     })
 
     it("Gives correct amount of tokens for PRESALE", async ()=>{
@@ -124,16 +135,15 @@ contract('TokenSale', (accounts) => {
     it("Finalizes correctly the presale", async()=>{
       await increaseTimeTo(date + duration.days(91));
       await sale.saleOpen();
-      let pEndDate = await sale.presale_EndDate();
-      let pbStarDate = await sale.mainSale_StartDate();
+      //let pEndDate = await sale.presale_EndDate();
+      //let pbStarDate = await sale.mainSale_StartDate();
       let preSold = await sale.presale_TokesSold();
       let preTkCap = await sale.presale_TokenCap();
       let preCap = await sale.presale_Cap();
       let preRaised = await sale.presale_WeiRaised()
       let pubTkCap = await sale.mainSale_TokenCap();
       let pubCap = await sale.mainSale_Cap();
-
-      assert.equal(pubTkCap.toNumber().toFixed(10), (ether(800000).toNumber() + preTkCap.toNumber() - preSold.toNumber()).toFixed(10));
+      assert.equal(pubTkCap.toNumber() / ether(1), (ether(800000).toNumber() + preTkCap.toNumber() - preSold.toNumber()) / ether(1));
       assert.equal(pubCap.toNumber(), ether(12000).toNumber() + preCap.toNumber() - preRaised.toNumber());
     })
 
@@ -216,6 +226,40 @@ contract('TokenSale', (accounts) => {
     })
 
 
+  })
+
+  context("Transactions in the cap gap", async() => {
+    const newPresaleCap = presaleCap / 1000;
+    const newPublicCap = mainSaleCap / 1000;
+    const buyer = accounts[7];
+    const buyer2 = accounts[6];
+    let date;
+
+    before(async () => {
+    let initialDate = await latestTime();
+    const values = await deployAndSetup(rate, wallet, newPresaleCap, newPublicCap, initialDate);
+    token = values[0];
+    sale = values[1];
+    date = values[2];
+    await sale.addManyToWhitelist(accounts);
+    })
+
+    it("Rejects below minimum purchase does not reach the cap", async () => {
+      const almostCap = ether(19);
+      const belowMinimum = ether(0.1);
+
+      await sale.buyTokens(buyer, {value: almostCap, from: buyer});
+      await assertRevert(sale.buyTokens(buyer2, {value: belowMinimum, from: buyer2}));
+    })
+
+    it("Accepts transaction if it reaches the cap", async() => {
+      const belowMinimum = ether(0.4);
+      let cap = await sale.getCurrentCap();
+      let raised = await sale.getRaisedForCurrentStage();
+      sale.buyTokens(buyer2, {value: belowMinimum, from: buyer2})
+      let contribution = await sale.contributions(buyer2);
+      assert.equal(contribution.toNumber(), cap.toNumber() - raised.toNumber());
+    })
   })
 
 

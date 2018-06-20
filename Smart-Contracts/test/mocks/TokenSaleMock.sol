@@ -9,4 +9,5 @@ contract TokenSaleMock is TokenSale {
     mainSale_Cap = _mainSaleCap;
   }
 
+
 }

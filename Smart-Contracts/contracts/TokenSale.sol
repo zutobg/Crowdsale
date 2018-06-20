@@ -19,6 +19,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   uint256 constant PRESALE_MAX_DURATION = 90 days;
   uint256 constant MAINSALE_MAX_DURATION = 30 days;
   uint256 constant TOKEN_RELEASE_DELAY = 182 days;
+  uint256 constant HUNDRED_PERCENT = 1000; //100% considering one extra decimal
 
   //PRESALE VARIABLES
   uint256 public presale_Cap = 19200 ether;
@@ -95,6 +96,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     @param _token A token contract. Will be overriden later(needed fot OZ constructor)
   **/
   constructor(uint256 _rate, address _wallet, ERC20 _token) public Crowdsale(_rate,_wallet,_token) {
+    require(_rate == 15);
     currentStage = Stages.SETUP;
   }
 
@@ -167,12 +169,12 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    */
   function distributeTokens() public onlyOwner atStage(Stages.FINALIZED) {
     require(!distributed);
-    require(checkPercentages(40));//Magic number -> Only 60% will be sold, therefore all other % must be less than 40%
+    //require(checkPercentages(40));//Magic number -> Only 60% will be sold, therefore all other % must be less than 40%
     distributed = true;
 
     uint256 totalTokens = (presale_TokesSold.add(mainSale_TokesSold)).mul(10).div(6);
     for(uint i = 0; i < partners.length; i++){
-      uint256 amount = percentages[partners[i]].mul(totalTokens).div(1000);
+      uint256 amount = percentages[partners[i]].mul(totalTokens).div(HUNDRED_PERCENT);
       _deliverTokens(partners[i], amount);
     }
     require(SolidToken(token).finishMinting());
@@ -200,7 +202,6 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     require(SolidToken(token).setTransferEnablingDate(now + TOKEN_RELEASE_DELAY));
     currentStage = Stages.FINALIZED;
   }
-
 
   /**
       OPEN ZEPPELIN OVERRIDES
@@ -230,7 +231,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
       acceptedValue = _weiAmount.sub(changeDue);
       capReached = true;
     }
-    require(contributions[_beneficiary].add(acceptedValue) >= MINIMUM_CONTRIBUTION || raised.add(acceptedValue) > currentCap.sub(MINIMUM_CONTRIBUTION) , "Contribution below minimum");
+    require((raised > currentCap.sub(MINIMUM_CONTRIBUTION) && capReached) || contributions[_beneficiary].add(acceptedValue) >= MINIMUM_CONTRIBUTION ,"Contribution below minimum");
   }
 
   /**
@@ -239,7 +240,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    * @return Number of tokens that can be purchased with the specified _weiAmount
    */
   function _getTokenAmount(uint256 _weiAmount) internal view returns (uint256 amount) {
-    amount = (_weiAmount.sub(changeDue)).mul(1000).div(rate); // Multiplication to account for the decimal cases in the rate
+    amount = (_weiAmount.sub(changeDue)).mul(HUNDRED_PERCENT).div(rate); // Multiplication to account for the decimal cases in the rate
     if(currentStage == Stages.PRESALE){
       amount = amount.add(amount.mul(25).div(100)); //Add bonus
     }
