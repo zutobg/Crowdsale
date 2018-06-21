@@ -40,12 +40,13 @@ Afterwards tokens will be minted to:
 Vesting: 1 year cliff, 3 year total.
 * Community & Audit Training Fund (10% of total supply)
 * Liquid Reserve (5% of total supply)
+* Partners (4% of total supply)
 * Airdrops (1% of total supply)
 
 
 __Whale protection:__  Combination of maximum participation limit and KYC’d addresses.
 
-__Edge Cases:__ Last transaction for either of the sales should get refunded whatever it sent over.
+__Edge Cases:__ Last transaction for sale should get refunded whatever it sent over.
 
 ## Intended Behavior
 
@@ -58,7 +59,6 @@ The sale is based on the Open Zeppelin framework, with a few additions, the bigg
   * If the cap is reached the stage will move during the last transaction in the `_postValidatePurchase`
   * If the time is reached, the transition must happen in `updateStage`, since making a purchase will revert the stage.
   * If the sale enter the state where the cap haven't been reached but the remaining amount is less than the minimum purchase, the transition should happen in `updateStage`;
-4) the `BREAK` stage should last 10 days(counting from the finalization).
 5) The `MAINSALE` should start when the time arrives, either by calling `updateStage` or making a purchase.
 7) The `MAINSALE` stage ends when either the cap is reached or the endTime arrives.
   * If the cap is reached the stage will move during the last transaction in the `_postValidatePurchase`
