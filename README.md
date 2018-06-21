@@ -33,8 +33,6 @@
 
 
 After both sales are finished:
-Dedicated function to Solidified and partners:
-
 The total supply is determined by how much we sell during sale (which will represent 60% of the existing tokens)
 
 Afterwards tokens will be minted to:
