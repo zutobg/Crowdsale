@@ -333,9 +333,9 @@ contract('TokenSale', (accounts) => {
     })
 
 
-    // it("Fails to process purchase in BREAK stage", async () => {
-    //   await assertRevert(sale.buyTokens(buyer, {from: buyer, value: ether(15)}));
-    // })
+    it("Fails to process purchase in BREAK stage", async () => {
+      await assertRevert(sale.buyTokens(buyer, {from: buyer, value: ether(1)}));
+    })
 
     // it("Fails to enter MAINSALE until initial time reaches", async () => {
     //

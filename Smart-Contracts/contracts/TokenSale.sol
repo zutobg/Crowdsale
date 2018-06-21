@@ -76,7 +76,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     if(currentStage == Stages.BONUSSALE && now > bonussale_EndDate){
       finalizePresale();
     }
-    if(currentStage == Stages.BREAK && now > bonussale_EndDate + BREAK_DURATION){
+    if(currentStage == Stages.BREAK && now >= bonussale_EndDate + BREAK_DURATION){
       currentStage = Stages.MAINSALE;
     }
     if(currentStage == Stages.MAINSALE && now > mainSale_EndDate){
@@ -152,8 +152,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    * @return True if open, false if closed
    */
   function saleOpen() public timedTransition whenNotPaused returns(bool open) {
-    open = ((now >= bonussale_StartDate && now <= bonussale_EndDate) ||
-           (now >= mainSale_StartDate && now <= mainSale_EndDate)) &&
+    open = ((now >= bonussale_StartDate && now < bonussale_EndDate) ||
+           (now >= mainSale_StartDate && now <   mainSale_EndDate)) &&
            (currentStage == Stages.BONUSSALE || currentStage == Stages.MAINSALE);
   }
 
@@ -231,7 +231,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
       acceptedValue = _weiAmount.sub(changeDue);
       capReached = true;
     }
-    require((raised > currentCap.sub(MINIMUM_CONTRIBUTION) && capReached) || contributions[_beneficiary].add(acceptedValue) >= MINIMUM_CONTRIBUTION ,"Contribution below minimum");
+    require(capReached || contributions[_beneficiary].add(acceptedValue) >= MINIMUM_CONTRIBUTION ,"Contribution below minimum");
   }
 
   /**
