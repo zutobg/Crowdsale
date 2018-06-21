@@ -8,23 +8,20 @@
 * Total max supply: 4,000,000 SOLID tokens
 
 
-6-month lock period on all sold tokens, from the end of the main sale.
+6-month non-transferable period on all tokens, from the end of the main sale.
 
 ## Sale Details
-### Targeted Presale
-- Targeted at auditors, Ethereum projects, developers and security experts
-- Cap of 1,600,000 SOLID tokens(40% of the total supply @ 20% discount)
-- Duration: max 3 months
+### Sale
+- Total cap for sale to be 2,400,000 SOLID tokens.
+- Length: 3 months
+
+### Discount Period
+- Cap of 1,200,000 SOLID tokens (30% of the total supply)
+- Duration: max 1 month
 - Discount: 20%
 
-If less than 1,600,000 SOLID tokens are sold during presale, the remaining limit carries over to the main sale.
-
-### Main Sale
-- Total cap for both sales to be 2,400,000 SOLID tokens.
-- Length: 1 month
-- No discount
-
 ### General Rules
+- Targeted at auditors, Ethereum projects, developers and security experts
 - No Soft Cap (no Refunds).
 - No Token Burning
 - Minimum Participation: 0.5 ETH
@@ -38,14 +35,14 @@ If less than 1,600,000 SOLID tokens are sold during presale, the remaining limit
 After both sales are finished:
 Dedicated function to Solidified and partners:
 
-The total supply is determined by how much we sell during Presale + Main sale(which will represent 60% of the existing tokens)
+The total supply is determined by how much we sell during sale (which will represent 60% of the existing tokens)
 
 Afterwards tokens will be minted to:
 * Team Fund (20% of total supply)
 Vesting: 1 year cliff, 3 year total.
 * Community & Audit Training Fund (10% of total supply)
 * Liquid Reserve (5% of total supply)
-* Airdrops (0.5% of total supply)
+* Airdrops (1% of total supply)
 
 
 __Whale protection:__  Combination of maximum participation limit and KYC’d addresses.
@@ -58,8 +55,8 @@ The sale is based on the Open Zeppelin framework, with a few additions, the bigg
 
 1) Sale is deployed with `SETUP`.
 2) After configuration the sale moves to `READY`.
-3) When the start date arrives the sale should go to `PRESALE`(either by calling `updateStage` or making a purchase), since it's resolved in `timedTransition`
-4) The `PRESALE` stage ends when either the cap is reached or the endTime arrives.
+3) When the start date arrives the sale should go to `DISCOUNT`(either by calling `updateStage` or making a purchase), since it's resolved in `timedTransition`
+4) The `DISCOUNT` stage ends when either the cap is reached or the endTime arrives.
   * If the cap is reached the stage will move during the last transaction in the `_postValidatePurchase`
   * If the time is reached, the transition must happen in `updateStage`, since making a purchase will revert the stage.
   * If the sale enter the state where the cap haven't been reached but the remaining amount is less than the minimum purchase, the transition should happen in `updateStage`;
@@ -82,7 +79,7 @@ The values will be harcoded in the `Distributable.sol` with percentages. When th
 
 * The amount sold in both sale stages will be 60% of the total Tokens
 * The other addresses percentages must account up to 40%
-* If a given address has rights to 5%, it means that it will receive 5% of the total tokens(even if not all of them are minted yet);
+* If a given address has rights to 5%, it means that it will receive 5% of the total tokens (even if not all of them are minted yet);
 
 
 ##### Note on units
