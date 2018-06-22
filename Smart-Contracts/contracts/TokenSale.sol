@@ -13,17 +13,18 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   Stages public currentStage;
 
   //CONSTANTS
-  uint256 constant MINIMUM_CONTRIBUTION = 0.5 ether;
-  uint256 constant MAXIMUM_CONTRIBUTION = 100 ether;
-  uint256 constant BREAK_DURATION = 0 ;
-  uint256 constant BONUSSALE_MAX_DURATION = 30 days;
+  uint256 constant MINIMUM_CONTRIBUTION = 0.5 ether;  //the minimum conbtribution on Wei
+  uint256 constant MAXIMUM_CONTRIBUTION = 100 ether;  //the maximum contribution on Wei
+  uint256 constant BONUS_PERCENT = 250                // The percentage of bonus in the fisrt stage, in;
+  uint256 constant TOKENS_ON_SALE_PERCENT = 600       //The percentage of avaiable tokens for sale;
+  uint256 constant BONUSSALE_MAX_DURATION = 30 days ;
   uint256 constant MAINSALE_MAX_DURATION = 60 days;
   uint256 constant TOKEN_RELEASE_DELAY = 182 days;
-  uint256 constant HUNDRED_PERCENT = 1000; //100% considering one extra decimal
+  uint256 constant HUNDRED_PERCENT = 1000;            //100% considering one extra decimal
 
   //BONUSSALE VARIABLES
-  uint256 public bonussale_Cap = 19200 ether;
-  uint256 public bonussale_TokenCap = 1600000 ether;
+  uint256 public bonussale_Cap = 14400 ether;
+  uint256 public bonussale_TokenCap = 1200000 ether;
 
   uint256 public bonussale_StartDate;
   uint256 public bonussale_EndDate;
@@ -31,8 +32,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   uint256 public bonussale_WeiRaised;
 
   //MAINSALE VARIABLES
-  uint256 public mainSale_Cap = 12000 ether;
-  uint256 public mainSale_TokenCap = 800000 ether;
+  uint256 public mainSale_Cap = 18000 ether;
+  uint256 public mainSale_TokenCap = 1200000 ether;
 
   uint256 public mainSale_StartDate;
   uint256 public mainSale_EndDate;
@@ -48,7 +49,6 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     SETUP,
     READY,
     BONUSSALE,
-    BREAK,
     MAINSALE,
     FINALIZED
   }
@@ -75,9 +75,6 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     }
     if(currentStage == Stages.BONUSSALE && now > bonussale_EndDate){
       finalizePresale();
-    }
-    if(currentStage == Stages.BREAK && now >= bonussale_EndDate + BREAK_DURATION){
-      currentStage = Stages.MAINSALE;
     }
     if(currentStage == Stages.MAINSALE && now > mainSale_EndDate){
       finalizeSale();
@@ -169,10 +166,9 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    */
   function distributeTokens() public onlyOwner atStage(Stages.FINALIZED) {
     require(!distributed);
-    //require(checkPercentages(40));//Magic number -> Only 60% will be sold, therefore all other % must be less than 40%
     distributed = true;
 
-    uint256 totalTokens = (bonussale_TokesSold.add(mainSale_TokesSold)).mul(10).div(6);
+    uint256 totalTokens = (bonussale_TokesSold.add(mainSale_TokesSold)).mul(HUNDRED_PERCENT).div(TOKENS_SOLD_PERCENT); //sold token will represent 60% of all tokens
     for(uint i = 0; i < partners.length; i++){
       uint256 amount = percentages[partners[i]].mul(totalTokens).div(HUNDRED_PERCENT);
       _deliverTokens(partners[i], amount);
@@ -186,11 +182,11 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    */
   function finalizePresale() atStage(Stages.BONUSSALE) internal{
     bonussale_EndDate = now;
-    mainSale_StartDate = bonussale_EndDate + BREAK_DURATION;
+    mainSale_StartDate = now;
     mainSale_EndDate = mainSale_StartDate + MAINSALE_MAX_DURATION;
     mainSale_TokenCap = mainSale_TokenCap.add(bonussale_TokenCap.sub(bonussale_TokesSold));
     mainSale_Cap = mainSale_Cap.add(bonussale_Cap.sub(weiRaised.sub(changeDue)));
-    currentStage = Stages.BREAK;
+    currentStage = Stages.MAINSALE;
   }
 
   /**
@@ -242,7 +238,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   function _getTokenAmount(uint256 _weiAmount) internal view returns (uint256 amount) {
     amount = (_weiAmount.sub(changeDue)).mul(HUNDRED_PERCENT).div(rate); // Multiplication to account for the decimal cases in the rate
     if(currentStage == Stages.BONUSSALE){
-      amount = amount.add(amount.mul(25).div(100)); //Add bonus
+      amount = amount.add(amount.mul(BONUS_PERCENT).div(HUNDRED_PERCENT)); //Add bonus
     }
   }
 
@@ -252,8 +248,9 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    * @param _weiAmount Value in wei involved in the purchase
    */
   function _postValidatePurchase(address _beneficiary, uint256 _weiAmount) internal {
-    if(currentStage == Stages.BONUSSALE && capReached) finalizePresale();
     if(currentStage == Stages.MAINSALE && capReached) finalizeSale();
+    if(currentStage == Stages.BONUSSALE && capReached) finalizePresale();
+
 
     //Cleanup temp
     changeDue = 0;

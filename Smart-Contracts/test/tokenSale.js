@@ -21,13 +21,20 @@ contract('TokenSale', (accounts) => {
 
   const rate = 15;
   const wallet = accounts[9];
-  const bonussaleCap = ether(19200);
-  const bonussaleTokenCap = ether(1600000);
-  const mainSaleCap = ether(12000);
-  const mainSaleTokenCap = ether(800000);
+  const bonussaleCap = ether(14400).toNumber();
+  const bonussaleTokenCap = ether(1200000).toNumber();
+  const mainSaleCap = ether(18000).toNumber();
+  const mainSaleTokenCap = ether(1200000).toNumber();
   const bonussaleDuration = duration.days(30);
   const mainsaleDuration = duration.days(60);
   const breakDuration = duration.days(0);
+  const stages = {
+    "setup": 0,
+    "ready": 1,
+    "bonussale": 2,
+    "mainsale": 3,
+    "finalized": 4,
+  }
 
   let token,sale = {};
 
@@ -62,7 +69,7 @@ contract('TokenSale', (accounts) => {
       assert.equal(token.address, tk);
       assert.equal(date, sd.toNumber());
       assert.equal(sed.toNumber(), date + duration.days(30));
-      assert.equal(stage.toNumber(), 1);
+      assert.equal(stage.toNumber(), stages["ready"]);
     })
   })
 
@@ -101,10 +108,10 @@ contract('TokenSale', (accounts) => {
       const aboveMax = ether(120);
       await web3.eth.sendTransaction({from: accounts[3], to: buyer2, value: ether(90)});
       let initialBal = await web3.eth.getBalance(buyer2);
-      let receipt = await sale.buyTokens(buyer2, {from: buyer2, value: aboveMax, gasPrice: 2});
+      let receipt = await sale.buyTokens(buyer2, {from: buyer2, value: aboveMax, gasPrice: 1});
       let endBalance = await web3.eth.getBalance(buyer2);
       let contribution = await sale.contributions(buyer2);
-      let gasUsed = receipt.receipt.gasUsed * 2;
+      let gasUsed = receipt.receipt.gasUsed;
       assert.equal(initialBal.toNumber(), endBalance.toNumber() + ether(100).toNumber() + gasUsed);
       assert.equal(contribution.toNumber(), ether(100).toNumber());
     })
@@ -147,8 +154,8 @@ contract('TokenSale', (accounts) => {
       let pubTkCap = await sale.mainSale_TokenCap();
       let pubCap = await sale.mainSale_Cap();
       let stage = await sale.currentStage();
-      assert.equal(pubTkCap.toNumber() / ether(1), (ether(800000).toNumber() + preTkCap.toNumber() - preSold.toNumber()) / ether(1));
-      assert.equal(pubCap.toNumber(), ether(12000).toNumber() + preCap.toNumber() - preRaised.toNumber());
+      assert.equal(pubTkCap.toNumber() / ether(1), (bonussaleTokenCap + preTkCap.toNumber() - preSold.toNumber()) / ether(1));
+      assert.equal(pubCap.toNumber(), mainSaleCap + preCap.toNumber() - preRaised.toNumber());
     })
 
     it("Gives correct amount of tokens for MAINSALE", async ()=>{
@@ -168,7 +175,7 @@ contract('TokenSale', (accounts) => {
       let stage = await sale.currentStage();
       let dateToken = await token.transferEnablingDate();
       let now = await latestTime();
-      assert.equal(stage.toNumber(), 5)
+      assert.equal(stage.toNumber(), stages["finalized"]);
       assert.isTrue(dateToken.toNumber() - (now + duration.days(182)) < 1)
     })
 
@@ -251,7 +258,7 @@ contract('TokenSale', (accounts) => {
     })
 
     it("Rejects below minimum purchase does not reach the cap", async () => {
-      const almostCap = ether(19);
+      const almostCap = ether(14);
       const belowMinimum = ether(0.1);
 
       await sale.buyTokens(buyer, {value: almostCap, from: buyer});
@@ -288,7 +295,7 @@ contract('TokenSale', (accounts) => {
 
     it("Deploys with stage SETUP", async() => {
       let stage = await sale.currentStage();
-      assert.equal(stage.toNumber(), 0);
+      assert.equal(stage.toNumber(), stages["setup"]);
     })
 
     it("Fails to process purchase in SETUP stage", async () => {
@@ -298,13 +305,13 @@ contract('TokenSale', (accounts) => {
     it("Fails to update stage until setup is done", async () => {
       await sale.saleOpen();
       let stage = await sale.currentStage();
-      assert.equal(stage.toNumber(), 0);
+      assert.equal(stage.toNumber(), stages["setup"]);
     })
 
     it("Update to READY after setup", async () => {
       await sale.setupSale(date + duration.days(1), token.address);
       let stage = await sale.currentStage();
-      assert.equal(stage.toNumber(), 1);
+      assert.equal(stage.toNumber(), stages["ready"]);
     })
 
 
@@ -315,53 +322,39 @@ contract('TokenSale', (accounts) => {
     it("Fails to enter PRESALE until initial time reaches", async () => {
       await sale.saleOpen();
       let stage = await sale.currentStage();
-      assert.equal(stage.toNumber(), 1);
+      assert.equal(stage.toNumber(), stages["ready"]);
     })
 
     it("Updates stages to PRESALE when inital time arrives", async () => {
       await increaseTimeTo(date + duration.days(2));
       await sale.saleOpen();
       let stage = await sale.currentStage();
-      assert.equal(stage.toNumber(), 2);
+      assert.equal(stage.toNumber(), stages["bonussale"]);
     })
 
-    it("It automatically updates do BREAK if bonussale cap is reached", async () => {
+    it("It automatically updates do MAINSALE if bonussale cap is reached", async () => {
       await sale.buyTokens(buyer, {from: buyer, value: ether(15)});
       await sale.buyTokens(buyer, {from: buyer, value: ether(4.3)});
       let stage = await sale.currentStage();
-      assert.equal(stage.toNumber(), 3);
+      assert.equal(stage.toNumber(), stages["mainsale"]);
     })
 
-
-    it("Fails to process purchase in BREAK stage", async () => {
-      await assertRevert(sale.buyTokens(buyer, {from: buyer, value: ether(1)}));
-    })
-
-    // it("Fails to enter MAINSALE until initial time reaches", async () => {
-    //
-    //   let t = await latestTime();
-    //   console.log(t);
-    //   await sale.saleOpen();
-    //   let stage = await sale.currentStage();
-    //   assert.equal(stage.toNumber(), 3);
-    // })
 
     it("Updates stages to MAINSALE when inital time arrives", async () => {
       let t = await latestTime();
       await increaseTimeTo(t + 2);
       await sale.saleOpen();
       let stage = await sale.currentStage();
-      assert.equal(stage.toNumber(), 4);
+      assert.equal(stage.toNumber(), stages["mainsale"]);
     })
 
-    it("It automatically updates do FINALAIZED if public sale cap is reached", async () => {
+    it("It automatically updates do FINALIZED if public sale cap is reached", async () => {
+      await sale.buyTokens(buyer, {from: buyer, value: ether(19)})
       let stage = await sale.currentStage();
-      await sale.buyTokens(buyer, {from: buyer, value: ether(14)})
-
-      assert.equal(stage.toNumber(), 4);
+      assert.equal(stage.toNumber(), stages["finalized"]);
     })
 
-    it("Fails to process purchase in FINALAIZED stage", async () => {
+    it("Fails to process purchase in FINALIZED stage", async () => {
       await assertRevert(sale.buyTokens(buyer, {from:buyer ,value: ether(15)}));
     })
   })
