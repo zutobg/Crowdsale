@@ -15,8 +15,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   //CONSTANTS
   uint256 constant MINIMUM_CONTRIBUTION = 0.5 ether;  //the minimum conbtribution on Wei
   uint256 constant MAXIMUM_CONTRIBUTION = 100 ether;  //the maximum contribution on Wei
-  uint256 constant BONUS_PERCENT = 250                // The percentage of bonus in the fisrt stage, in;
-  uint256 constant TOKENS_ON_SALE_PERCENT = 600       //The percentage of avaiable tokens for sale;
+  uint256 constant BONUS_PERCENT = 250;                // The percentage of bonus in the fisrt stage, in;
+  uint256 constant TOKENS_ON_SALE_PERCENT = 600;       //The percentage of avaiable tokens for sale;
   uint256 constant BONUSSALE_MAX_DURATION = 30 days ;
   uint256 constant MAINSALE_MAX_DURATION = 60 days;
   uint256 constant TOKEN_RELEASE_DELAY = 182 days;
@@ -168,7 +168,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     require(!distributed);
     distributed = true;
 
-    uint256 totalTokens = (bonussale_TokesSold.add(mainSale_TokesSold)).mul(HUNDRED_PERCENT).div(TOKENS_SOLD_PERCENT); //sold token will represent 60% of all tokens
+    uint256 totalTokens = (bonussale_TokesSold.add(mainSale_TokesSold)).mul(HUNDRED_PERCENT).div(TOKENS_ON_SALE_PERCENT); //sold token will represent 60% of all tokens
     for(uint i = 0; i < partners.length; i++){
       uint256 amount = percentages[partners[i]].mul(totalTokens).div(HUNDRED_PERCENT);
       _deliverTokens(partners[i], amount);
