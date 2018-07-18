@@ -9,8 +9,10 @@ contract Distributable {
   bool public distributed;
   //Not actual addresses
   address[] public partners = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10];
+  address[] public partnerFixedAmount = [0x011, 0x012];
 
   mapping(address => uint256) public percentages;
+  mapping(address => uint256) public fixedAmounts;
 
   constructor() public{
     //Not actual percentages
@@ -24,5 +26,8 @@ contract Distributable {
     percentages[0x08] = 8;
     percentages[0x09] = 9;
     percentages[0x10] = 10;
+
+    fixedAmounts[0x011] = 3000;
+    fixedAmounts[0x012] = 9000;
   }
 }
