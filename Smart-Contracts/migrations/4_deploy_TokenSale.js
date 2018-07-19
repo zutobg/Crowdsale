@@ -12,7 +12,6 @@ module.exports = function (deployer, network, accounts) {
 
   deployer.deploy(TokenSale,rate,MultiSigWallet.address,SolidToken.address)
   .then((instance) => {
-    console.log("Deploying Token Sale");
     console.log("Token Sale address: ", instance.address);
   })
 }

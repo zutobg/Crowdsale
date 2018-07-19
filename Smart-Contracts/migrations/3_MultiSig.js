@@ -4,13 +4,11 @@ const MultiSigWallet = artifacts.require('MultiSigWallet');
 
 module.exports = function (deployer, network, accounts) {
 
-  const owner1 = accounts[5];
-  const owner2 = accounts[6];
-  const owner3 = accounts[7];
+  const owner1 = "0xa4C2CD42662C8B7e836fB9CA6D67e7Dc3dD9A4a6";
+  const owner2 = "0x096c02a38215e8d869e0a620d07f79A2fCA8A2c9";
 
-  deployer.deploy(MultiSigWallet, [owner1,owner2,owner3], 2)
+  deployer.deploy(MultiSigWallet, [owner1,owner2], 2)
   .then((instance) => {
-    console.log("Deploying Multisig Wallet");
     console.log("MultiSig address: ", instance.address);
   })
 }
