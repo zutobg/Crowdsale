@@ -180,13 +180,22 @@ contract('TokenSale', (accounts) => {
     })
 
     it("Distributes the token correctly", async() => {
-      const partAdd = ["0x01", "0x02", "0x03", "0x04", "0x05", "0x06", "0x07", "0x08","0x09", "0x10"];
+      const partAdd = ["0xb68342f2f4dd35d93b88081b03a245f64331c95c",
+        "0x16CCc1e68D2165fb411cE5dae3556f823249233e",
+        "0x0003", "0x0004", "0x0005", "0x0006", "0x0007", "0x0008", "0x0009", "0x0010", "0x0011", "0x0012"];
+      const partPercent = [40,5,100,50,10,20,20,20,20,30,30,52];
       let supply = await token.totalSupply();
       let totalTokens = supply.toNumber() * 10 / 6
       await sale.distributeTokens();
       for(var i = 0; i < partAdd.length; i++){
         let bal = await token.balanceOf(partAdd[i]);
-        assert.equal((bal.toNumber() / totalTokens).toFixed(3) , (i + 1) / 1000);
+        assert.equal((bal.toNumber() / totalTokens).toFixed(3) , (partPercent[i]) / 1000);
+      }
+      const fixedPartAdd = ["0xA482D998DA4d361A6511c6847562234077F09748", "0xFa92F80f8B9148aDFBacC66aA7bbE6e9F0a0CD0e"]
+      const fixedAmounts = [8862.28,697]
+      for(var j = 0; j < fixedPartAdd.length; j++){
+        let bal = await token.balanceOf(fixedPartAdd[j]);
+        assert.equal(bal.toNumber(),ether(fixedAmounts[j]));
       }
     })
 
@@ -356,6 +365,26 @@ contract('TokenSale', (accounts) => {
 
     it("Fails to process purchase in FINALIZED stage", async () => {
       await assertRevert(sale.buyTokens(buyer, {from:buyer ,value: ether(15)}));
+    })
+
+    it("Distributes the token correctly when cap is Reached", async() => {
+      const partAdd = ["0xb68342f2f4dd35d93b88081b03a245f64331c95c",
+        "0x16CCc1e68D2165fb411cE5dae3556f823249233e",
+        "0x0003", "0x0004", "0x0005", "0x0006", "0x0007", "0x0008", "0x0009", "0x0010", "0x0011", "0x0012"];
+      const partPercent = [40,5,100,50,10,20,20,20,20,30,30,52];
+      let supply = await token.totalSupply();
+      let totalTokens = supply.toNumber() * 10 / 6
+      await sale.distributeTokens();
+      for(var i = 0; i < partAdd.length; i++){
+        let bal = await token.balanceOf(partAdd[i]);
+        assert.equal((bal.toNumber() / totalTokens).toFixed(3) , (partPercent[i]) / 1000);
+      }
+      const fixedPartAdd = ["0xA482D998DA4d361A6511c6847562234077F09748", "0xFa92F80f8B9148aDFBacC66aA7bbE6e9F0a0CD0e"]
+      const fixedAmounts = [8862.28,697]
+      for(var j = 0; j < fixedPartAdd.length; j++){
+        let bal = await token.balanceOf(fixedPartAdd[j]);
+        assert.equal(bal.toNumber(),ether(fixedAmounts[j]));
+      }
     })
   })
 

@@ -9,6 +9,15 @@ module.exports = function (deployer, network, accounts) {
 
   deployer.deploy(MultiSigWallet, [owner1,owner2], 2)
   .then((instance) => {
-    console.log("MultiSig address: ", instance.address);
+    console.log("MultiSig address 1: ", instance.address);
+    return MultiSigWallet.new([owner1,owner2], 2)
+  }).then((instance) => {
+    console.log("MultiSig address 2: ", instance.address);
+    return MultiSigWallet.new([owner1,owner2], 2)
+  }).then((instance) => {
+    console.log("MultiSig address 3: ", instance.address);
+    return MultiSigWallet.new([owner1,owner2], 2)
+  }).then((instance) => {
+    console.log("MultiSig address 4: ", instance.address);
   })
 }

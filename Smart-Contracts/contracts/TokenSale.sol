@@ -173,7 +173,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
       uint256 amount = percentages[partners[i]].mul(totalTokens).div(HUNDRED_PERCENT);
       _deliverTokens(partners[i], amount);
     }
-    for(uint j = 0; j < partnerFixedAmount.length; i++){
+    for(uint j = 0; j < partnerFixedAmount.length; j++){
       _deliverTokens(partnerFixedAmount[j], fixedAmounts[partnerFixedAmount[j]]);
     }
     require(SolidToken(token).finishMinting());
