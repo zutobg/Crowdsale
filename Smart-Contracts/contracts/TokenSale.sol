@@ -18,7 +18,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   uint256 constant BONUS_PERCENT = 250;                // The percentage of bonus in the fisrt stage, in;
   uint256 constant TOKENS_ON_SALE_PERCENT = 600;       //The percentage of avaiable tokens for sale;
   uint256 constant BONUSSALE_MAX_DURATION = 30 days ;
-  uint256 constant MAINSALE_MAX_DURATION = 60 days;
+  uint256 constant MAINSALE_MAX_DURATION = 62 days;
   uint256 constant TOKEN_RELEASE_DELAY = 182 days;
   uint256 constant HUNDRED_PERCENT = 1000;            //100% considering one extra decimal
 
