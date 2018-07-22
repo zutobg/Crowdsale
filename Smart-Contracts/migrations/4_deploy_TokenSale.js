@@ -23,5 +23,7 @@ module.exports = function (deployer, network, accounts) {
   .then(() => {
     return sale.setupSale(saleStart, SolidToken.address);
   })
+  .then(() => {
+    return sale.transferOwnership(saleManager);
+  })
 }
-// 15, "0xca35b7d915458ef540ade6068dfe2f44e8fa733c", "0x692a70d2e424a56d2c6c27aa97d1a86395877b3a"
