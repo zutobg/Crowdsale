@@ -25,7 +25,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   // Sale related variables
   uint256 public startDate;
   uint256 public endDate;
-  uint256 public tokesSold;
+  uint256 public tokensSold;
 
 
   //TEMPORARY VARIABLES - USED TO AVOID OVERRIDING MORE OPEN ZEPPELING FUNCTIONS
@@ -56,8 +56,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     based on time only
   **/
   modifier timedTransition(){
-    if(currentStage == Stages.READY && now >= bonussale_StartDate){
-      currentStage = Stages.BONUSSALE;
+    if(currentStage == Stages.READY && now >= startDate){
+      currentStage = Stages.SALE;
     }
 
     if(currentStage == Stages.SALE && now > endDate){
@@ -92,8 +92,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     @param tokenAddress  The address of the deployed SolidToken
    */
   function setupSale(uint256 initialDate, address tokenAddress) onlyOwner atStage(Stages.SETUP) public {
-    bonussale_StartDate = initialDate;
-    bonussale_EndDate = bonussale_StartDate + BONUSSALE_MAX_DURATION;
+    startDate = initialDate;
+    endDate = startDate + SALE_DURATION;
     token = ERC20(tokenAddress);
 
     //require(SolidToken(tokenAddress).totalSupply() == 0, "Tokens have already been distributed");
@@ -112,7 +112,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    * @return uint256 representing the cap
    */
   function getBonusPercent() public view returns(uint256 bonus){
-    uint week = (now - mainSale_StartDate) / 1 week + 1;
+    uint week = (now - startDate) / 1 weeks + 1;
     bonus = 0;
     if(week == 1) bonus = WEEK_1_BONUS_PERCENT;
     if(week == 2) bonus = WEEK_2_BONUS_PERCENT;
@@ -132,8 +132,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    * @dev Finalizes the public sale
    *
    */
-  function finalizeSale() atStage(Stages.MAINSALE) internal {
-    mainSale_EndDate = now;
+  function finalizeSale() atStage(Stages.SALE) internal {
+    endDate = now;
     currentStage = Stages.FINALIZED;
   }
 
@@ -157,9 +157,9 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
       acceptedValue = acceptedValue.sub(changeDue);
     }
 
-    uint2556 tokens = _getTokenAmount(_weiAmount);
-    if(mainSale_TokesSold.add(tokens) >= mainSale_TokenCap){
-      changeDue = _getWeiAmount(tokens.sub(mainSale_TokenCap.sub(mainSale_TokesSold)));
+    uint256 tokens = _getTokenAmount(_weiAmount);
+    if(tokensSold.add(tokens) >= TOKEN_CAP){
+      changeDue = _getWeiAmount(tokens.sub(TOKEN_CAP.sub(tokensSold)));
       acceptedValue = _weiAmount.sub(changeDue);
       capReached = true;
     }
@@ -169,10 +169,11 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
 
   /**
    * @dev Override to extend the way in which ether is converted to tokens.
-   * @param _weiAmount Value in wei to be converted into tokens
+   * @param _tokens Value in wei to be converted into tokens
    * @return Number of tokens that can be purchased with the specified _weiAmount
    */
   function _getWeiAmount(uint256 _tokens) internal view returns (uint256 amount) {
+    uint bonus = getBonusPercent();
     amount = _tokens.mul(rate).div(HUNDRED_PERCENT.add(bonus));
   }
 
@@ -193,9 +194,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    * @param _weiAmount Value in wei involved in the purchase
    */
   function _postValidatePurchase(address _beneficiary, uint256 _weiAmount) internal {
-    if(currentStage == Stages.MAINSALE && capReached) finalizeSale();
-    if(currentStage == Stages.BONUSSALE && capReached) finalizePresale();
-
+    if(currentStage == Stages.SALE && capReached) finalizeSale();
 
     //Cleanup temp
     changeDue = 0;
@@ -209,18 +208,10 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    * @param _weiAmount Value in wei involved in the purchase
    */
   function _updatePurchasingState(address _beneficiary, uint256 _weiAmount) internal {
-    uint256 tokenAmount = _getTokenAmount(_weiAmount);
-
-    if(currentStage == Stages.BONUSSALE){
-      bonussale_TokesSold = bonussale_TokesSold.add(tokenAmount);
-      bonussale_WeiRaised = bonussale_WeiRaised.add(_weiAmount.sub(changeDue));
-    } else {
-      mainSale_TokesSold = mainSale_TokesSold.add(tokenAmount);
-      mainSale_WeiRaised = mainSale_WeiRaised.add(_weiAmount.sub(changeDue));
-    }
-
-    contributions[_beneficiary] = contributions[_beneficiary].add(_weiAmount).sub(changeDue);
+    uint256 tokenAmount = _getTokenAmount(_weiAmount.sub(changeDue));
+    tokensSold = tokensSold.add(tokenAmount);
     weiRaised = weiRaised.sub(changeDue);
+    contributions[_beneficiary] = contributions[_beneficiary].add(_weiAmount).sub(changeDue);
   }
 
   /**

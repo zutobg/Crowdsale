@@ -3,7 +3,7 @@ pragma solidity 0.4.24;
 import "openzeppelin-solidity/contracts/token/ERC20/MintableToken.sol";
 import "./Distributable.sol";
 
-contract SolidToken is MintableToken, Dustributable {
+contract SolidToken is MintableToken, Distributable {
 
   string public constant name = "SolidToken";
   string public constant symbol = "SOLID";
@@ -22,15 +22,16 @@ contract SolidToken is MintableToken, Dustributable {
   /**
    * @dev Enables the token transfer
    */
-  modifier transfersEnabled() public {
+  modifier transfersAllowed() {
     require(now >= transferEnablingDate || superusers[msg.sender]);
+    _;
   }
 
 
-  function constructor() public {
+    constructor() public {
     //Mint intial TokenSale
     for(uint i = 0; i < partners.length; i++){
-      uint256 amount = percentages[partners[i]].mul(DECIMAL_PLACES)
+      uint256 amount = tokenAmounts[partners[i]].mul(DECIMAL_PLACES);
       mint(partners[i], amount);
     }
 
@@ -68,7 +69,7 @@ contract SolidToken is MintableToken, Dustributable {
   * @param _to The address to transfer to.
   * @param _value The amount to be transferred.
   */
-  function transfer(address _to, uint256 _value) public transfersEnabled returns (bool) {
+  function transfer(address _to, uint256 _value) public transfersAllowed returns (bool) {
     require(super.transfer(_to, _value));
     return true;
   }
@@ -80,7 +81,7 @@ contract SolidToken is MintableToken, Dustributable {
    * @param _to address The address which you want to transfer to
    * @param _value uint256 the amount of tokens to be transferred
    */
-  function transferFrom(address _from, address _to, uint256 _value) public transfersEnabled returns (bool) {
+  function transferFrom(address _from, address _to, uint256 _value) public transfersAllowed  returns (bool) {
     require(super.transferFrom(_from, _to, _value));
     return true;
   }

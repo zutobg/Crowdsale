@@ -12,7 +12,7 @@ contract Distributable {
   /**
   TODO re-deploy vesting contracts
   **/
-  0xb68342f2f4dd35d93b88081b03a245f64331c95c,
+  0x0acc23Af96F4c43cf61E639cFc5C0937b9E07E7C,
   0x16CCc1e68D2165fb411cE5dae3556f823249233e,
   0x8E176EDA10b41FA072464C29Eb10CfbbF4adCd05, //Auditors Traning
   0x7c387c57f055993c857067A0feF6E81884656Cb0, //Reserve
@@ -29,7 +29,7 @@ contract Distributable {
   mapping(address => uint256) public tokenAmounts;
 
   constructor() public{
-    tokenAmounts[0xb68342f2f4dd35d93b88081b03a245f64331c95c] = 1600000; //Private Sale Wallet - 1.6MM
+    tokenAmounts[0x0acc23Af96F4c43cf61E639cFc5C0937b9E07E7C] = 1600000; //Private Sale Wallet - 1.6MM
     tokenAmounts[0x16CCc1e68D2165fb411cE5dae3556f823249233e] = 400000; // Marketing and Community tokens - 400k
     tokenAmounts[0x4F21c073A9B8C067818113829053b60A6f45a817] = 200000; //Airdrop and Bounty - 200k
 
