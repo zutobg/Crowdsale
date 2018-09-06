@@ -92,7 +92,7 @@ contract('TokenSale', (accounts) => {
     })
 
     it("Accepts buys from whitelisted", async() => {
-      await sale.buyTokens(buyer, {from: buyer, value: value});
+      let tx = await sale.buyTokens(buyer, {from: buyer, value: value});
       let tokenBal = await token.balanceOf(buyer);
       let raised = await sale.weiRaised();
       assert.equal(tokenBal.toNumber(), value / 0.012)
