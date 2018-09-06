@@ -15,30 +15,17 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   //CONSTANTS
   uint256 constant MINIMUM_CONTRIBUTION = 0.5 ether;  //the minimum conbtribution on Wei
   uint256 constant MAXIMUM_CONTRIBUTION = 100 ether;  //the maximum contribution on Wei
-  uint256 constant BONUS_PERCENT = 250;                // The percentage of bonus in the fisrt stage, in;
-  uint256 constant TOKENS_ON_SALE_PERCENT = 600;       //The percentage of avaiable tokens for sale;
-  uint256 constant BONUSSALE_MAX_DURATION = 30 days ;
-  uint256 constant MAINSALE_MAX_DURATION = 62 days;
-  uint256 constant TOKEN_RELEASE_DELAY = 182 days;
+  uint256 constant SALE_DURATION = 30 days;
   uint256 constant HUNDRED_PERCENT = 1000;            //100% considering one extra decimal
+  uint256 constant TOKEN_CAP = 800000 ether;
+  uint256 constant WEEK_1_BONUS_PERCENT = 250;
+  uint256 constant WEEK_2_BONUS_PERCENT = 150;
+  uint256 constant WEEK_3_BONUS_PERCENT = 50;
 
-  //BONUSSALE VARIABLES
-  uint256 public bonussale_Cap = 14400 ether;
-  uint256 public bonussale_TokenCap = 1200000 ether;
-
-  uint256 public bonussale_StartDate;
-  uint256 public bonussale_EndDate;
-  uint256 public bonussale_TokesSold;
-  uint256 public bonussale_WeiRaised;
-
-  //MAINSALE VARIABLES
-  uint256 public mainSale_Cap = 18000 ether;
-  uint256 public mainSale_TokenCap = 1200000 ether;
-
-  uint256 public mainSale_StartDate;
-  uint256 public mainSale_EndDate;
-  uint256 public mainSale_TokesSold;
-  uint256 public mainSale_WeiRaised;
+  // Sale related variables
+  uint256 public startDate;
+  uint256 public endDate;
+  uint256 public tokesSold;
 
 
   //TEMPORARY VARIABLES - USED TO AVOID OVERRIDING MORE OPEN ZEPPELING FUNCTIONS
@@ -48,8 +35,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
   enum Stages{
     SETUP,
     READY,
-    BONUSSALE,
-    MAINSALE,
+    SALE,
     FINALIZED
   }
 
@@ -73,10 +59,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     if(currentStage == Stages.READY && now >= bonussale_StartDate){
       currentStage = Stages.BONUSSALE;
     }
-    if(currentStage == Stages.BONUSSALE && now > bonussale_EndDate){
-      finalizePresale();
-    }
-    if(currentStage == Stages.MAINSALE && now > mainSale_EndDate){
+
+    if(currentStage == Stages.SALE && now > endDate){
       finalizeSale();
     }
     _;
@@ -112,7 +96,7 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
     bonussale_EndDate = bonussale_StartDate + BONUSSALE_MAX_DURATION;
     token = ERC20(tokenAddress);
 
-    require(SolidToken(tokenAddress).totalSupply() == 0, "Tokens have already been distributed");
+    //require(SolidToken(tokenAddress).totalSupply() == 0, "Tokens have already been distributed");
     require(SolidToken(tokenAddress).owner() == address(this), "Token has the wrong ownership");
 
     currentStage = Stages.READY;
@@ -127,21 +111,12 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    * @dev Returns de ETH cap of the current currentStage
    * @return uint256 representing the cap
    */
-  function getCurrentCap() public view returns(uint256 cap){
-    cap = bonussale_Cap;
-    if(currentStage == Stages.MAINSALE){
-      cap = mainSale_Cap;
-    }
-  }
-
-  /**
-   * @dev Returns de ETH cap of the current currentStage
-   * @return uint256 representing the raised amount in the stage
-   */
-  function getRaisedForCurrentStage() public view returns(uint256 raised){
-    raised = bonussale_WeiRaised;
-    if(currentStage == Stages.MAINSALE)
-      raised = mainSale_WeiRaised;
+  function getBonusPercent() public view returns(uint256 bonus){
+    uint week = (now - mainSale_StartDate) / 1 week + 1;
+    bonus = 0;
+    if(week == 1) bonus = WEEK_1_BONUS_PERCENT;
+    if(week == 2) bonus = WEEK_2_BONUS_PERCENT;
+    if(week == 3) bonus = WEEK_3_BONUS_PERCENT;
   }
 
   /**
@@ -149,25 +124,9 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    * @return True if open, false if closed
    */
   function saleOpen() public timedTransition whenNotPaused returns(bool open) {
-    open = ((now >= bonussale_StartDate && now < bonussale_EndDate) ||
-           (now >= mainSale_StartDate && now <   mainSale_EndDate)) &&
-           (currentStage == Stages.BONUSSALE || currentStage == Stages.MAINSALE);
+    open = (now >= startDate && now < endDate) && currentStage == Stages.SALE;
   }
 
-
-
-  /**
-   * @dev Finalizes the bonussale and sets up the break and public sales
-   *
-   */
-  function finalizePresale() atStage(Stages.BONUSSALE) internal{
-    bonussale_EndDate = now;
-    mainSale_StartDate = now;
-    mainSale_EndDate = mainSale_StartDate + MAINSALE_MAX_DURATION;
-    mainSale_TokenCap = mainSale_TokenCap.add(bonussale_TokenCap.sub(bonussale_TokesSold));
-    mainSale_Cap = mainSale_Cap.add(bonussale_Cap.sub(weiRaised.sub(changeDue)));
-    currentStage = Stages.MAINSALE;
-  }
 
   /**
    * @dev Finalizes the public sale
@@ -175,7 +134,6 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    */
   function finalizeSale() atStage(Stages.MAINSALE) internal {
     mainSale_EndDate = now;
-    //require(SolidToken(token).setTransferEnablingDate(now + TOKEN_RELEASE_DELAY));
     currentStage = Stages.FINALIZED;
   }
 
@@ -194,20 +152,28 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
 
     // Check for edge cases
     uint256 acceptedValue = _weiAmount;
-    uint256 currentCap = getCurrentCap();
-    uint256 raised = getRaisedForCurrentStage();
-
     if(contributions[_beneficiary].add(acceptedValue) > MAXIMUM_CONTRIBUTION){
       changeDue = (contributions[_beneficiary].add(acceptedValue)).sub(MAXIMUM_CONTRIBUTION);
       acceptedValue = acceptedValue.sub(changeDue);
     }
 
-    if(raised.add(acceptedValue) >= currentCap){
-      changeDue = changeDue.add(raised.add(acceptedValue).sub(currentCap));
+    uint2556 tokens = _getTokenAmount(_weiAmount);
+    if(mainSale_TokesSold.add(tokens) >= mainSale_TokenCap){
+      changeDue = _getWeiAmount(tokens.sub(mainSale_TokenCap.sub(mainSale_TokesSold)));
       acceptedValue = _weiAmount.sub(changeDue);
       capReached = true;
     }
+
     require(capReached || contributions[_beneficiary].add(acceptedValue) >= MINIMUM_CONTRIBUTION ,"Contribution below minimum");
+  }
+
+  /**
+   * @dev Override to extend the way in which ether is converted to tokens.
+   * @param _weiAmount Value in wei to be converted into tokens
+   * @return Number of tokens that can be purchased with the specified _weiAmount
+   */
+  function _getWeiAmount(uint256 _tokens) internal view returns (uint256 amount) {
+    amount = _tokens.mul(rate).div(HUNDRED_PERCENT.add(bonus));
   }
 
   /**
@@ -217,9 +183,8 @@ contract TokenSale is MintedCrowdsale, WhitelistedCrowdsale, Pausable, Distribut
    */
   function _getTokenAmount(uint256 _weiAmount) internal view returns (uint256 amount) {
     amount = (_weiAmount.sub(changeDue)).mul(HUNDRED_PERCENT).div(rate); // Multiplication to account for the decimal cases in the rate
-    if(currentStage == Stages.BONUSSALE){
-      amount = amount.add(amount.mul(BONUS_PERCENT).div(HUNDRED_PERCENT)); //Add bonus
-    }
+    uint bonus = getBonusPercent();
+    amount = amount.add(amount.mul(bonus).div(HUNDRED_PERCENT));
   }
 
   /**

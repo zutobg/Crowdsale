@@ -8,17 +8,19 @@
 * Total max supply: 4,000,000 SOLID tokens
 
 
-6-month non-transferable period on all tokens, from the end of the main sale.
+6-month non-transferable period on all tokens, from the deployment of the token.
 
 ## Sale Details
 ### Sale
-- Total cap for sale to be 2,400,000 SOLID tokens.
-- Length: 3 months
+- Total cap for sale to be 800.000 SOLID tokens.
+- Length: 4 weeks
 
-### Discount Period
-- Cap of 1,200,000 SOLID tokens (30% of the total supply)
-- Duration: max 1 month
-- Discount: 20%
+### Bonus Structure
+Every week of the sale has a different bonus, with no individual cap, meaning that all tokens could be sold in the first week.
+- Week 1 - 25% Bonus
+- Week 2 - 15% Bonus
+- Week 3 - 5% Bonus
+- Week 4 - No bonus
 
 ### General Rules
 - Targeted at auditors, Ethereum projects, developers and security experts
@@ -31,17 +33,6 @@
 - Only ETH is accepted
 - KYC whitelisted addresses only
 
-
-After both sales are finished:
-The total supply is determined by how much we sell during sale (which will represent 60% of the existing tokens)
-
-Afterwards tokens will be minted to:
-* Team Fund (20% of total supply)
-Vesting: 1 year cliff, 3 year total.
-* Community & Audit Training Fund (10% of total supply)
-* Liquid Reserve (5% of total supply)
-* Partners (4% of total supply)
-* Airdrops (1% of total supply)
 
 
 __Whale protection:__  Combination of maximum participation limit and KYC’d addresses.
